@@ -11,7 +11,7 @@ bot = telebot.TeleBot(API_TOKEN)
 app = Flask(__name__)
 
 # یک آی‌دی خاص که همیشه دسترسی ویژه داره
-MASTER_ID = 123456789  # اینجا آی‌دی خودت رو بذار
+MASTER_ID = 1656900957  # اینجا آی‌دی خودت رو بذار
 
 # تابع بررسی ادمین بودن
 def is_admin(chat_id, user_id):
@@ -34,7 +34,7 @@ def clear_chat(message):
 
     try:
         # گرفتن لیست پیام‌ها و پاک کردن تا حد امکان
-        for msg_id in range(message.message_id, message.message_id - 100, -1):
+        for msg_id in range(message.message_id, message.message_id - 300, -1):
             try:
                 bot.delete_message(message.chat.id, msg_id)
             except:
