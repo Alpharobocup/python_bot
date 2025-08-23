@@ -1,7 +1,7 @@
 import os
 import telebot
 from flask import Flask, request
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 API_TOKEN = os.environ.get("BOT_TOKEN")
 WEBHOOK_URL = os.environ.get("WEBHOOK_URL") 
@@ -10,10 +10,10 @@ WEBHOOK_PATH = f"/bot{API_TOKEN}"
 bot = telebot.TeleBot(API_TOKEN)
 app = Flask(__name__)
 
-# یک آی‌دی خاص که همیشه دسترسی ویژه داره
-MASTER_ID = 1656900957  # اینجا آی‌دی خودت رو بذار
+# آی‌دی مستر
+MASTER_ID = 1656900957  
 
-# تابع بررسی ادمین بودن
+# تابع چک ادمین
 def is_admin(chat_id, user_id):
     if user_id == MASTER_ID:
         return True
@@ -26,32 +26,32 @@ def is_admin(chat_id, user_id):
 
 # ----------------- دستورات ----------------- #
 
-# 1) پاکسازی گروه
+# پاکسازی گروه
 @bot.message_handler(commands=['پاکسازی'])
 def clear_chat(message):
     if not is_admin(message.chat.id, message.from_user.id):
-        return bot.reply_to(message, "⛔ فقط ادمین‌ها می‌تونن این دستور رو بزنن.")
+        bot.reply_to(message, "⛔ فقط ادمین‌ها می‌تونن این دستور رو بزنن.")
+        return
 
-    try:
-        # گرفتن لیست پیام‌ها و پاک کردن تا حد امکان
-        for msg_id in range(message.message_id, message.message_id - 300, -1):
-            try:
-                bot.delete_message(message.chat.id, msg_id)
-            except:
-                pass
-        bot.send_message(message.chat.id, "✅ گروه پاکسازی شد (تا حد دسترسی ربات).")
-    except Exception as e:
-        bot.reply_to(message, f"⚠️ خطا: {e}")
+    deleted = 0
+    for msg_id in range(message.message_id, message.message_id - 300, -1):
+        try:
+            bot.delete_message(message.chat.id, msg_id)
+            deleted += 1
+        except:
+            pass
+    bot.send_message(message.chat.id, f"✅ {deleted} پیام پاک شد (تا حد دسترسی ربات).")
 
 
-# 2) سکوت کاربر
+# سکوت کاربر
 @bot.message_handler(func=lambda m: m.text and m.text.startswith("سکوت"))
 def mute_user(message):
     if not is_admin(message.chat.id, message.from_user.id):
-        return bot.reply_to(message, "⛔ فقط ادمین‌ها می‌تونن این دستور رو بزنن.")
+        bot.reply_to(message, "⛔ فقط ادمین‌ها می‌تونن این دستور رو بزنن.")
+        return
 
     args = message.text.split()
-    duration = 1  # دیفالت ۱ دقیقه
+    duration = 1
     unit = "minute"
 
     if len(args) >= 2:
@@ -63,52 +63,61 @@ def mute_user(message):
             unit = "hour"
 
     seconds = duration * 60 if unit == "minute" else duration * 3600
+    until = datetime.now() + timedelta(seconds=seconds)
 
-    target = None
-    if message.reply_to_message:  # سکوت روی ریپلای
-        target = message.reply_to_message.from_user.id
+    target = message.reply_to_message.from_user.id if message.reply_to_message else None
 
     if target:
         try:
             bot.restrict_chat_member(
                 message.chat.id,
                 target,
-                until_date=timedelta(seconds=seconds),
+                until_date=until,
                 can_send_messages=False
             )
             bot.reply_to(message, f"🔇 کاربر برای {duration} {unit}(s) سکوت شد.")
         except Exception as e:
             bot.reply_to(message, f"⚠️ خطا در سکوت کاربر: {e}")
     else:
-        bot.reply_to(message, "⚠️ باید روی پیام طرف ریپلای کنید تا سکوت بشه.")
+        bot.reply_to(message, "⚠️ باید روی پیام طرف ریپلای کنید.")
 
 
-# 3) حذف کاربر
-@bot.message_handler(func=lambda m: m.text and "حذف" in m.text)
-def kick_user(message):
-    if not is_admin(message.chat.id, message.from_user.id):
-        return bot.reply_to(message, "⛔ فقط ادمین‌ها می‌تونن این دستور رو بزنن.")
+@bot.message_handler(func=lambda message: message.text and message.text.startswith("حذف"))
+def delete_user(message):
+    chat_id = message.chat.id
+    args = message.text.split()
 
-    target = None
-    if message.reply_to_message:  # حالت ریپلای
-        target = message.reply_to_message.from_user.id
-    else:
-        parts = message.text.split()
-        if len(parts) == 2 and parts[1].startswith("@"):
-            try:
-                user = bot.get_chat_member(message.chat.id, parts[1])
-                target = user.user.id
-            except:
-                pass
-
-    if target:
+    # حالت ۱: ریپلای به پیام
+    if message.reply_to_message:
+        user_id = message.reply_to_message.from_user.id
         try:
-            bot.kick_chat_member(message.chat.id, target)
-            bot.reply_to(message, "🚷 کاربر حذف شد.")
+            bot.kick_chat_member(chat_id, user_id)
+            bot.reply_to(message, f"کاربر {message.reply_to_message.from_user.first_name} حذف شد ✅")
         except Exception as e:
-            bot.reply_to(message, f"⚠️ خطا در حذف کاربر: {e}")
+            bot.reply_to(message, f"خطا در حذف: {e}")
+
+    # حالت ۲: حذف با یوزرنیم
+    elif len(args) > 1 and args[1].startswith("@"):
+        username = args[1]
+        try:
+            user = bot.get_chat(username)  # تبدیل یوزرنیم → آی‌دی
+            bot.kick_chat_member(chat_id, user.id)
+            bot.reply_to(message, f"کاربر {username} حذف شد ✅")
+        except Exception as e:
+            bot.reply_to(message, f"خطا در حذف {username}: {e}")
+
+    # حالت ۳: حذف با user_id عددی
+    elif len(args) > 1 and args[1].isdigit():
+        user_id = int(args[1])
+        try:
+            bot.kick_chat_member(chat_id, user_id)
+            bot.reply_to(message, f"کاربر {user_id} حذف شد ✅")
+        except Exception as e:
+            bot.reply_to(message, f"خطا در حذف: {e}")
+
     else:
-        bot.reply_to(message, "⚠️ باید روی پیام ریپلای کنید یا یوزرنیم وارد کنید.")
+        bot.reply_to(message, "❌ لطفاً دستور رو به‌درستی وارد کنید.\nمثال: \n- ریپلای روی پیام و نوشتن «حذف»\n- حذف @username\n- حذف 123456789")
+
 
 
 # ----------------- وبهوک ----------------- #
