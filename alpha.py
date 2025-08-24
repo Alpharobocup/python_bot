@@ -36,6 +36,24 @@ def welcome(message):
         except:
             bot.send_message(message.chat.id, text)
 
+@bot.message_handler(func=lambda m: True)
+def reply_info(message):
+    # فقط وقتی کاربر روی کسی ریپلای کرده
+    if message.reply_to_message:
+        if "اطلاعات" in message.text:
+            user = message.reply_to_message.from_user
+
+            info = f"""
+📌 اطلاعات کاربر:
+👤 نام: {user.first_name or '-'} {user.last_name or '-'}
+🔗 یوزرنیم: @{user.username if user.username else 'ندارد'}
+🆔 آیدی عددی: {user.id}
+🌐 زبان: {user.language_code or 'نامشخص'}
+🤖 ربات هست؟ {"بله" if user.is_bot else "خیر"}
+            """
+            bot.reply_to(message, info)
+
+
 # ======= هندلر پیام‌ها =======
 @bot.message_handler(func=lambda m: True)
 def handle_message(message):
