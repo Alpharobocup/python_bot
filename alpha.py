@@ -94,38 +94,31 @@ def unmute_user(message):
     except:
         bot.reply_to(message, "خطا در رفع سکوت ❌")
 
-# حذف کاربر
-@bot.message_handler(func=lambda m: m.text.startswith("حذف"))
+@bot.message_handler(func=lambda message: message.text and message.text.startswith("حذف"))
 def delete_user(message):
-    if not is_authorized(message.chat.id, message.from_user.id):
-        return
-    target_id = None
+    chat_id = message.chat.id
+    args = message.text.split()
+
+    # حالت ۱: ریپلای به پیام
     if message.reply_to_message:
-        target_id = message.reply_to_message.from_user.id
+        user_id = message.reply_to_message.from_user.id
+        try:
+            bot.kick_chat_member(chat_id, user_id)
+            bot.reply_to(message, f"کاربر {message.reply_to_message.from_user.first_name} حذف شد ✅")
+        except Exception as e:
+            bot.reply_to(message, f"خطا در حذف: ")
+
+    # حالت ۳: حذف با user_id عددی
+    elif len(args) > 1 and args[1].isdigit():
+        user_id = int(args[1])
+        try:
+            bot.kick_chat_member(chat_id, user_id)
+            bot.reply_to(message, f"کاربر {user_id} حذف شد ✅")
+        except Exception as e:
+            bot.reply_to(message, f"خطا در حذف")
+
     else:
-        # بررسی یوزرنیم یا آی‌دی
-        parts = message.text.split()
-        if len(parts) >= 2:
-            arg = parts[1]
-            if arg.startswith("@"):
-                try:
-                    user = bot.get_chat_member(message.chat.id, arg)
-                    target_id = user.user.id
-                except:
-                    bot.reply_to(message, "کاربر پیدا نشد ❌")
-                    return
-            elif arg.isdigit():
-                target_id = int(arg)
-            else:
-                bot.reply_to(message, "آی‌دی یا یوزرنیم معتبر نیست ❌")
-                return
-        else:
-            return
-    try:
-        bot.kick_chat_member(message.chat.id, target_id)
-        bot.reply_to(message, "کاربر حذف شد ✅")
-    except:
-        bot.reply_to(message, "خطا در حذف کاربر ❌")
+        bot.reply_to(message, "❌ لطفاً دستور رو به‌درستی وارد کنید.\nمثال: \n- ریپلای روی پیام و نوشتن «حذف»\n- حذف @username\n- حذف 123456789")
 
 # وبهوک
 @app.route(WEBHOOK_PATH, methods=["POST"])
