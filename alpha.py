@@ -67,7 +67,7 @@ def handle_message(message):
         
         mute_until = datetime.now() + timedelta(minutes=duration)
         mute_timers[message.chat.id] = mute_until
-        bot.reply_to(message, f"کاربر سکوت شد تا {mute_until.strftime('%H:%M')}")
+        bot.reply_to(message, f"کاربر سکوت شد تا {mute_until.strftime('%H+3:%M+30')}")
         return
     
 # رفع سکوت
@@ -85,21 +85,31 @@ def unmute_user(message):
             bot.reply_to(message, "لطفاً ریپلای روی کاربر مورد نظر بزنید.")
 
 
-    # ======= حذف کاربر =======
-    if text.startswith("حذف") and is_admin:
-        target = None
-        if message.reply_to_message:
-            target = message.reply_to_message.from_user.id
-        else:
-            parts = text.split()
-            if len(parts) == 2:
-                if parts[1].startswith("@"):
-                    target = bot.get_chat_member(message.chat.id, parts[1][1:]).user.id
-                else:
-                    target = int(parts[1])
-        if target:
-            bot.kick_chat_member(message.chat.id, target)
-        return
+   @bot.message_handler(func=lambda message: message.text and message.text.startswith("حذف"))
+def delete_user(message):
+    chat_id = message.chat.id
+    args = message.text.split()
+
+    # حالت ۱: ریپلای به پیام
+    if message.reply_to_message:
+        user_id = message.reply_to_message.from_user.id
+        try:
+            bot.kick_chat_member(chat_id, user_id)
+            bot.reply_to(message, f"کاربر {message.reply_to_message.from_user.first_name} حذف شد ✅")
+        except Exception as e:
+            bot.reply_to(message, f"خطا در حذف: {e}")
+
+    # حالت ۳: حذف با user_id عددی
+    elif len(args) > 1 and args[1].isdigit():
+        user_id = int(args[1])
+        try:
+            bot.kick_chat_member(chat_id, user_id)
+            bot.reply_to(message, f"کاربر {user_id} حذف شد ✅")
+        except Exception as e:
+            bot.reply_to(message, f"خطا در حذف: {e}")
+
+    else:
+        bot.reply_to(message, "❌ لطفاً دستور رو به‌درستی وارد کنید.\nمثال: \n- ریپلای روی پیام و نوشتن «حذف»\n- حذف 123456789")
     
     # ======= حالت تکرار =======
     if text.strip() == "تکرار روشن" and is_admin:
