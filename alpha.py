@@ -34,7 +34,7 @@ def clear_chat(message):
         return
 
     deleted = 0
-    for msg_id in range(message.message_id, message.message_id - 300, -1):
+    for msg_id in range(message.message_id, message.message_id - 50, -1):
         try:
             bot.delete_message(message.chat.id, msg_id)
             deleted += 1
