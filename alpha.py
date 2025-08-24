@@ -111,20 +111,37 @@ def delete_user(message):
     else:
         bot.reply_to(message, "❌ لطفاً دستور رو به‌درستی وارد کنید.\nمثال: \n- ریپلای روی پیام و نوشتن «حذف»\n- حذف 123456789")
     
-    # ======= حالت تکرار =======
-    if text.strip() == "تکرار روشن" and is_admin:
-        repeater_on = True
-        bot.reply_to(message, "حالت تکرار روشن شد ✅")
-        return
-    if text.strip() == "تکرار خاموش" and is_admin:
-        repeater_on = False
-        bot.reply_to(message, "حالت تکرار خاموش شد ❌")
-        return
-    
-    # ======= اگر حالت تکرار فعال باشد =======
-    if repeater_on:
+    # ----------- حالت تکرار -----------
+@bot.message_handler(func=lambda m: m.text == "حالت تکرار روشن")
+def repeat_on(message):
+    global repeat_mode
+    repeat_mode = True
+    bot.reply_to(message, "حالت تکرار روشن شد ✅")
+
+@bot.message_handler(func=lambda m: m.text == "حالت تکرار خاموش")
+def repeat_off(message):
+    global repeat_mode
+    repeat_mode = False
+    bot.reply_to(message, "حالت تکرار خاموش شد ❌")
+
+@bot.message_handler(func=lambda m: True, content_types=['text','sticker','video','photo','animation','audio','voice'])
+def repeater(message):
+    if repeat_mode:
         try:
-            bot.forward_message(message.chat.id, message.chat.id, message.message_id)
+            if message.content_type == 'text':
+                bot.send_message(message.chat.id, message.text)
+            elif message.content_type == 'sticker':
+                bot.send_sticker(message.chat.id, message.sticker.file_id)
+            elif message.content_type == 'video':
+                bot.send_video(message.chat.id, message.video.file_id)
+            elif message.content_type == 'photo':
+                bot.send_photo(message.chat.id, message.photo[-1].file_id)
+            elif message.content_type == 'animation':
+                bot.send_animation(message.chat.id, message.animation.file_id)
+            elif message.content_type == 'audio':
+                bot.send_audio(message.chat.id, message.audio.file_id)
+            elif message.content_type == 'voice':
+                bot.send_voice(message.chat.id, message.voice.file_id)
         except:
             pass
 
