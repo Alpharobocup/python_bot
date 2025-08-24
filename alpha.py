@@ -12,6 +12,35 @@ OWNER_ID = 1656900957  # آی‌دی خاص که اجازه کامل داره
 bot = telebot.TeleBot(API_TOKEN)
 app = Flask(__name__)
 
+
+
+# --- پیام‌های خوشامدگویی ---
+WELCOME_MESSAGES = [
+    "خوش آمدی به گروه {}! 🌟",
+    "سلام! به {} خوش اومدی 😎",
+    "به جمع ما در {} خوش اومدی 🎉",
+    "خوش اومدی! امیدوارم در {} لحظات خوبی داشته باشی ❤️"
+]
+
+
+# --- خوشامدگویی اعضای جدید ---
+@bot.message_handler(content_types=['new_chat_members'])
+def welcome_new_member(message):
+    chat_id = message.chat.id
+    group_title = message.chat.title or "این گروه"
+    welcome_text = random.choice(WELCOME_MESSAGES).format(group_title)
+
+    try:
+        # گرفتن عکس پروفایل گروه
+        chat = bot.get_chat(chat_id)
+        if chat.photo:
+            file_id = chat.photo.big_file_id
+            bot.send_photo(chat_id, file_id, caption=welcome_text)
+        else:
+            bot.send_message(chat_id, welcome_text)
+    except Exception as e:
+        bot.send_message(chat_id, welcome_text)
+
 # بررسی دسترسی کاربر
 def is_authorized(chat_id, user_id):
     try:
