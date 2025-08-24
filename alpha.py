@@ -42,7 +42,32 @@ def clear_chat(message):
             pass
     bot.send_message(message.chat.id, f"✅ {deleted} پیام پاک شد (تا حد دسترسی ربات).")
 
-
+# رفع سکوت
+@bot.message_handler(commands=['unsilence'])
+def unsilence_user(message):
+    if not message.reply_to_message:
+        bot.reply_to(message, "باید روی پیام کاربر ریپلای کنی ❗")
+        return
+    
+    user_id = message.reply_to_message.from_user.id
+    chat_id = message.chat.id
+    
+    try:
+        bot.restrict_chat_member(
+            chat_id,
+            user_id,
+            can_send_messages=True,
+            can_send_media_messages=True,
+            can_send_polls=True,
+            can_send_other_messages=True,
+            can_add_web_page_previews=True,
+            can_change_info=True,
+            can_invite_users=True,
+            can_pin_messages=True
+        )
+        bot.reply_to(message, "✅ سکوت کاربر برداشته شد")
+    except Exception as e:
+        bot.reply_to(message, f"خطا در رفع سکوت: {e}")
 # سکوت کاربر
 @bot.message_handler(func=lambda m: m.text and m.text.startswith("سکوت"))
 def mute_user(message):
@@ -82,41 +107,42 @@ def mute_user(message):
         bot.reply_to(message, "⚠️ باید روی پیام طرف ریپلای کنید.")
 
 
-@bot.message_handler(func=lambda message: message.text and message.text.startswith("حذف"))
+@bot.message_handler(func=lambda m: m.text and m.text.lower().startswith("حذف"))
 def delete_user(message):
+    allowed_users = [1656900957]  # ایدی کاربر خاص
     chat_id = message.chat.id
-    args = message.text.split()
-
-    # حالت ۱: ریپلای به پیام
+    
+    # بررسی ادمین بودن یا مالک بودن
+    member = bot.get_chat_member(chat_id, message.from_user.id)
+    if member.status not in ["administrator", "creator"] and message.from_user.id not in allowed_users:
+        bot.reply_to(message, "❌ شما اجازه این کار را ندارید")
+        return
+    
+    # حذف با ریپلای
     if message.reply_to_message:
-        user_id = message.reply_to_message.from_user.id
-        try:
-            bot.kick_chat_member(chat_id, user_id)
-            bot.reply_to(message, f"کاربر {message.reply_to_message.from_user.first_name} حذف شد ✅")
-        except Exception as e:
-            bot.reply_to(message, f"خطا در حذف: {e}")
-
-    # حالت ۲: حذف با یوزرنیم
-    elif len(args) > 1 and args[1].startswith("@"):
-        username = args[1]
-        try:
-            user = bot.get_chat(username)  # تبدیل یوزرنیم → آی‌دی
-            bot.kick_chat_member(chat_id, user.id)
-            bot.reply_to(message, f"کاربر {username} حذف شد ✅")
-        except Exception as e:
-            bot.reply_to(message, f"خطا در حذف {username}: {e}")
-
-    # حالت ۳: حذف با user_id عددی
-    elif len(args) > 1 and args[1].isdigit():
-        user_id = int(args[1])
-        try:
-            bot.kick_chat_member(chat_id, user_id)
-            bot.reply_to(message, f"کاربر {user_id} حذف شد ✅")
-        except Exception as e:
-            bot.reply_to(message, f"خطا در حذف: {e}")
-
-    else:
-        bot.reply_to(message, "❌ لطفاً دستور رو به‌درستی وارد کنید.\nمثال: \n- ریپلای روی پیام و نوشتن «حذف»\n- حذف @username\n- حذف 123456789")
+        target_id = message.reply_to_message.from_user.id
+        bot.kick_chat_member(chat_id, target_id)
+        bot.reply_to(message, "✅ کاربر حذف شد")
+        return
+    
+    # حذف با یوزرنیم
+    parts = message.text.split()
+    if len(parts) < 2:
+        bot.reply_to(message, "❌ باید یوزرنیم کاربر را وارد کنید")
+        return
+    
+    username = parts[1].replace("@", "")
+    try:
+        # پیدا کردن user_id با username
+        for member in bot.get_chat_administrators(chat_id) + [bot.get_chat_member(chat_id, message.from_user.id)]:
+            if member.user.username and member.user.username.lower() == username.lower():
+                bot.kick_chat_member(chat_id, member.user.id)
+                bot.reply_to(message, f"✅ کاربر @{username} حذف شد")
+                return
+        
+        bot.reply_to(message, "❌ کاربر پیدا نشد یا ربات دسترسی ندارد")
+    except Exception as e:
+        bot.reply_to(message, f"خطا در حذف کاربر: {e}")
 
 
 
