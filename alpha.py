@@ -32,7 +32,7 @@ def clean_all(message):
         return
     try:
         # حذف همه پیام‌های قابل مشاهده
-        for msg in bot.get_chat_history(message.chat.id, limit=10000):  # عدد بزرگ برای پیام‌های زیاد
+        for msg in bot.get_chat_history(message.chat.id, limit=100):  # عدد بزرگ برای پیام‌های زیاد
             try:
                 bot.delete_message(message.chat.id, msg.message_id)
             except:
