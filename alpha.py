@@ -52,13 +52,13 @@ def handle_text(message):
         set_repeat_on(message)
     elif "حالت تکرار خاموش" in text:
         set_repeat_off(message)
-    elif text.startswith("سکوت"):
+    elif text.startswith("سکو"):
         parts = text.split()
         if len(parts) > 1 and parts[1].isdigit():
             mute_user(message, int(parts[1]))
         else:
             mute_user(message, 0)
-    elif text.startswith("رفع سکوت"):
+    elif text.startswith("رف"):
         unmute_user(message)
     elif "حذف" in text:
         delete_message(message)
