@@ -29,37 +29,46 @@ def set_repeat_off(message):
     repeat_mode = False
     bot.reply_to(message, "حالت تکرار خاموش شد ❌")
 
+
 # 📌 تابع محاسبه تقویم
 def get_calendar_info():
-    now = datetime.datetime.now()
+    # زمان با تایم‌زون تهران
+    tz = pytz.timezone("Asia/Tehran")
+    now = datetime.datetime.now(tz)
 
     # تاریخ میلادی
     gregorian_date = now.strftime("%Y-%m-%d")
 
     # تاریخ شمسی
-    persian_date = jdatetime.date.fromgregorian(date=now).strftime("%Y-%m-%d")
+    persian_date_obj = jdatetime.date.fromgregorian(date=now)
+    persian_date = persian_date_obj.strftime("%Y-%m-%d")
 
+    # تاریخ شمسی به صورت "۴ شهریور ۱۴۰۴"
+    persian_date_text = persian_date_obj.strftime("%d %B %Y")
+    # تبدیل ماه و اعداد به فارسی
+    persian_date_text = jdatetime.date.fromgregorian(date=now).strftime("%-d %B %Y")
+    
     # تاریخ قمری
     hijri_date = convert.Gregorian(now.year, now.month, now.day).to_hijri()
     hijri_str = f"{hijri_date.day}-{hijri_date.month}-{hijri_date.year}"
 
-    # ساعت دقیق
+    # ساعت دقیق (به وقت تهران)
     time_now = now.strftime("%H:%M:%S")
 
-    # درصد سال گذشته و مانده
-    start_year = datetime.datetime(now.year, 1, 1)
-    end_year = datetime.datetime(now.year + 1, 1, 1)
+    # درصد سال گذشته و مانده بر اساس سال شمسی
+    start_year = jdatetime.date(persian_date_obj.year, 1, 1).togregorian()
+    end_year = jdatetime.date(persian_date_obj.year + 1, 1, 1).togregorian()
     total_days = (end_year - start_year).days
-    passed_days = (now - start_year).days
+    passed_days = (now.date() - start_year).days
     left_days = total_days - passed_days
     percent_passed = round((passed_days / total_days) * 100, 2)
 
     info = f"📅 تقویم امروز\n\n"
-    info += f"🌞 شمسی: {persian_date}\n"
+    info += f"🌞 شمسی: {persian_date_text}\n"
     info += f"🌍 میلادی: {gregorian_date}\n"
     info += f"🌙 قمری: {hijri_str}\n\n"
-    info += f"⏰ ساعت: {time_now}\n\n"
-    info += f"📊 گذشته از سال: {passed_days} روز ({percent_passed}%)\n"
+    info += f"⏰ ساعت (تهران): {time_now}\n\n"
+    info += f"📊 گذشته از سال شمسی: {passed_days} روز ({percent_passed}%)\n"
     info += f"📊 مانده تا پایان سال: {left_days} روز\n"
 
     return info
