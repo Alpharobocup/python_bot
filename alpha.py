@@ -48,9 +48,9 @@ def delete_message(message):
 def handle_text(message):
     text = message.text.strip()
     
-    if "حالت تکرار روشن" in text:
+    if "تکرار روشن" in text:
         set_repeat_on(message)
-    elif "حالت تکرار خاموش" in text:
+    elif "تکرار خاموش" in text:
         set_repeat_off(message)
     elif text.startswith("سکو"):
         parts = text.split()
@@ -60,7 +60,7 @@ def handle_text(message):
             mute_user(message, 0)
     elif text.startswith("رف"):
         unmute_user(message)
-    elif "حذف" in text:
+    elif "دل" in text:
         delete_message(message)
     elif repeat_mode:
         bot.reply_to(message, text)
