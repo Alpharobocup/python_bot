@@ -11,10 +11,10 @@ WEBHOOK_PATH = f"/bot{API_TOKEN}"
 bot = telebot.TeleBot(API_TOKEN)
 app = Flask(__name__)
 
-# ======= تنظیمات ==========
-OWNER_ID = 1656900957  # آی‌دی مشخص
-repeater_on = False
+OWNER_ID = 1656900957
+repeat_mode = False
 mute_timers = {}
+user_silenced = {}
 
 welcome_messages = [
     "سلام {name} به گروه {group} خوش اومدی! 🌟",
@@ -22,13 +22,12 @@ welcome_messages = [
     "به جمع ما خوش اومدی {name}! توی {group} خوش بگذرون 🙂",
 ]
 
-# ======= هندلر خوشامدگویی =======
 @bot.message_handler(content_types=['new_chat_members'])
 def welcome(message):
     for member in message.new_chat_members:
         text = random.choice(welcome_messages).format(name=member.first_name, group=message.chat.title)
         try:
-            photo = bot.get_chat(message.chat.id).photo  # اگر پروفایل گروه موجود باشد
+            photo = bot.get_chat(message.chat.id).photo
             if photo:
                 bot.send_photo(message.chat.id, photo.file_id, caption=text)
             else:
@@ -36,112 +35,79 @@ def welcome(message):
         except:
             bot.send_message(message.chat.id, text)
 
-@bot.message_handler(func=lambda m: True)
+@bot.message_handler(func=lambda m: True, content_types=['text'])
 def reply_info(message):
-    # فقط وقتی کاربر روی کسی ریپلای کرده
-    if message.reply_to_message:
-        if "اطلاعات" in message.text:
-            user = message.reply_to_message.from_user
-
-            info = f"""
+    if message.reply_to_message and "اطلاعات" in message.text:
+        user = message.reply_to_message.from_user
+        info = f"""
 📌 اطلاعات کاربر:
 👤 نام: {user.first_name or '-'} {user.last_name or '-'}
 🔗 یوزرنیم: @{user.username if user.username else 'ندارد'}
 🆔 آیدی عددی: {user.id}
 🌐 زبان: {user.language_code or 'نامشخص'}
 🤖 ربات هست؟ {"بله" if user.is_bot else "خیر"}
-            """
-            bot.reply_to(message, info)
+        """
+        bot.reply_to(message, info)
 
-
-# ======= هندلر پیام‌ها =======
-@bot.message_handler(func=lambda m: True)
+@bot.message_handler(func=lambda m: True, content_types=['text','sticker','video','photo','animation','audio','voice'])
 def handle_message(message):
-    global repeater_on
-    
+    global repeat_mode
+
     user_id = message.from_user.id
     text = message.text or ""
-    
-    # فقط ادمین‌ها، مالک و OWNER_ID مجاز
-    is_admin = (user_id == OWNER_ID) or message.from_user.id in [a.user.id for a in bot.get_chat_administrators(message.chat.id)]
-    
-    # ======= پاکسازی =======
+    try:
+        admins = [a.user.id for a in bot.get_chat_administrators(message.chat.id)]
+    except:
+        admins = []
+    is_admin = user_id == OWNER_ID or user_id in admins
+
     if text.strip() == "پاکسازی مستر" and is_admin:
         try:
-            for msg in bot.get_chat_history(message.chat.id, limit=100):  # می‌تونی limit رو بالا ببری
+            for msg in bot.get_chat_history(message.chat.id, limit=100):
                 bot.delete_message(message.chat.id, msg.message_id)
         except:
             pass
         return
 
-    # ======= سکوت =======
     if text.startswith("سکوت") and is_admin:
         parts = text.split()
-        duration = 1  # پیش فرض دقیقه
+        duration = 1
         if len(parts) == 2:
             duration = int(parts[1])
         elif len(parts) == 3 and parts[2].lower().startswith("ساعت"):
             duration = int(parts[1]) * 60
-        
         mute_until = datetime.now() + timedelta(minutes=duration)
         mute_timers[message.chat.id] = mute_until
-        bot.reply_to(message, f"کاربر سکوت شد تا {mute_until.strftime('%H+3:%M+30')}")
-        return
-    
-    # رفع سکوت
-    if text.startswith("رفع سکوت") and is_admin:
-        if message.from_user.id in admins + [owner_id, special_user_id]:
-            if message.reply_to_message:
-                uid = message.reply_to_message.from_user.id
-                if uid in user_silenced:
-                    del user_silenced[uid]
-                    bot.reply_to(message, f"{message.reply_to_message.from_user.first_name} از سکوت خارج شد.")
-                else:
-                    bot.reply_to(message, "این کاربر در حالت سکوت نیست.")
-            else:
-                bot.reply_to(message, "لطفاً ریپلای روی کاربر مورد نظر بزنید.")
+        bot.reply_to(message, f"کاربر سکوت شد تا {mute_until.strftime('%H:%M')}")
 
+    if text.startswith("رفع سکوت") and is_admin:
+        if message.reply_to_message:
+            uid = message.reply_to_message.from_user.id
+            if uid in user_silenced:
+                del user_silenced[uid]
+                bot.reply_to(message, f"{message.reply_to_message.from_user.first_name} از سکوت خارج شد.")
+            else:
+                bot.reply_to(message, "این کاربر در حالت سکوت نیست.")
+        else:
+            bot.reply_to(message, "لطفاً ریپلای روی کاربر مورد نظر بزنید.")
 
     if text.startswith("حذف") and is_admin:
         chat_id = message.chat.id
-        args = message.text.split()
-    
-        # حالت ۱: ریپلای به پیام
+        args = text.split()
         if message.reply_to_message:
-            user_id = message.reply_to_message.from_user.id
-            try:
-                bot.kick_chat_member(chat_id, user_id)
-                bot.reply_to(message, f"کاربر {message.reply_to_message.from_user.first_name} حذف شد ✅")
-            except Exception as e:
-                bot.reply_to(message, f"خطا در حذف: {e}")
-    
-        # حالت ۳: حذف با user_id عددی
+            uid = message.reply_to_message.from_user.id
         elif len(args) > 1 and args[1].isdigit():
-            user_id = int(args[1])
+            uid = int(args[1])
+        else:
+            uid = None
+
+        if uid:
             try:
-                bot.kick_chat_member(chat_id, user_id)
-                bot.reply_to(message, f"کاربر {user_id} حذف شد ✅")
+                bot.kick_chat_member(chat_id, uid)
+                bot.reply_to(message, f"کاربر {uid} حذف شد ✅")
             except Exception as e:
                 bot.reply_to(message, f"خطا در حذف: {e}")
-    
-        else:
-            bot.reply_to(message, "❌ لطفاً دستور رو به‌درستی وارد کنید.\nمثال: \n- ریپلای روی پیام و نوشتن «حذف»\n- حذف 123456789")
-    
-    # ----------- حالت تکرار -----------
-@bot.message_handler(func=lambda m: m.text == "حالت تکرار روشن")
-def repeat_on(message):
-    global repeat_mode
-    repeat_mode = True
-    bot.reply_to(message, "حالت تکرار روشن شد ✅")
 
-@bot.message_handler(func=lambda m: m.text == "حالت تکرار خاموش")
-def repeat_off(message):
-    global repeat_mode
-    repeat_mode = False
-    bot.reply_to(message, "حالت تکرار خاموش شد ❌")
-
-@bot.message_handler(func=lambda m: True, content_types=['text','sticker','video','photo','animation','audio','voice'])
-def repeater(message):
     if repeat_mode:
         try:
             if message.content_type == 'text':
@@ -161,7 +127,18 @@ def repeater(message):
         except:
             pass
 
-# ======= وبهوک =======
+@bot.message_handler(func=lambda m: m.text == "حالت تکرار روشن")
+def repeat_on(message):
+    global repeat_mode
+    repeat_mode = True
+    bot.reply_to(message, "حالت تکرار روشن شد ✅")
+
+@bot.message_handler(func=lambda m: m.text == "حالت تکرار خاموش")
+def repeat_off(message):
+    global repeat_mode
+    repeat_mode = False
+    bot.reply_to(message, "حالت تکرار خاموش شد ❌")
+
 @app.route(WEBHOOK_PATH, methods=["POST"])
 def webhook():
     json_str = request.stream.read().decode("UTF-8")
