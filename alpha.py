@@ -21,6 +21,74 @@ def set_repeat_on(message):
     repeat_mode = True
     bot.reply_to(message, "حالت تکرار روشن شد ✅")
 
+
+# 📌 تابع محاسبه تقویم
+def get_calendar_info():
+    now = datetime.datetime.now()
+
+    # تاریخ میلادی
+    gregorian_date = now.strftime("%Y-%m-%d")
+
+    # تاریخ شمسی
+    persian_date = jdatetime.date.fromgregorian(date=now).strftime("%Y-%m-%d")
+
+    # تاریخ قمری
+    hijri_date = convert.Gregorian(now.year, now.month, now.day).to_hijri()
+    hijri_str = f"{hijri_date.day}-{hijri_date.month}-{hijri_date.year}"
+
+    # ساعت دقیق
+    time_now = now.strftime("%H:%M:%S")
+
+    # درصد سال گذشته و مانده
+    start_year = datetime.datetime(now.year, 1, 1)
+    end_year = datetime.datetime(now.year + 1, 1, 1)
+    total_days = (end_year - start_year).days
+    passed_days = (now - start_year).days
+    left_days = total_days - passed_days
+    percent_passed = round((passed_days / total_days) * 100, 2)
+
+    info = f"📅 تقویم امروز\n\n"
+    info += f"🌞 شمسی: {persian_date}\n"
+    info += f"🌍 میلادی: {gregorian_date}\n"
+    info += f"🌙 قمری: {hijri_str}\n\n"
+    info += f"⏰ ساعت: {time_now}\n\n"
+    info += f"📊 گذشته از سال: {passed_days} روز ({percent_passed}%)\n"
+    info += f"📊 مانده تا پایان سال: {left_days} روز\n"
+
+    return info
+
+# 📌 مناسبت‌ها (مثلاً از keybit.ir)
+def get_events():
+    try:
+        res = requests.get("https://api.keybit.ir/public/calendar")
+        data = res.json()
+        events = data.get("events", [])
+        if events:
+            return "📌 مناسبت‌های امروز:\n" + "\n".join(["- " + e["title"] for e in events])
+        else:
+            return "📌 امروز مناسبت خاصی نداره."
+    except:
+        return "⚠️ خطا در دریافت مناسبت‌ها."
+
+# 📌 هندلر تقویم
+def handle_calendar(message):
+    cal_info = get_calendar_info()
+    events_info = get_events()
+
+    # 📷 اگر عکس مناسبت روز وجود داشت
+    try:
+        res = requests.get("https://api.keybit.ir/public/calendar", timeout=5)
+        data = res.json()
+        if "image" in data:
+            bot.send_photo(message.chat.id, data["image"], caption=cal_info + "\n\n" + events_info)
+            return
+    except:
+        pass
+
+    # در غیر اینصورت فقط متن
+    bot.send_message(message.chat.id, cal_info + "\n\n" + events_info)
+
+
 def set_repeat_off(message):
     global repeat_mode
     repeat_mode = False
@@ -52,6 +120,8 @@ def handle_text(message):
         set_repeat_on(message)
     elif "تکرار خاموش" in text:
         set_repeat_off(message)
+    elif "تقویم" in text:
+        handle_calendar(message)
     elif text.startswith("سکو"):
         parts = text.split()
         if len(parts) > 1 and parts[1].isdigit():
