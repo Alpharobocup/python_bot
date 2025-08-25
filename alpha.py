@@ -1,5 +1,8 @@
-
 import os
+import datetime
+import jdatetime
+from hijri_converter import convert
+import requests
 from flask import Flask, request
 import telebot
 
@@ -21,6 +24,10 @@ def set_repeat_on(message):
     repeat_mode = True
     bot.reply_to(message, "حالت تکرار روشن شد ✅")
 
+def set_repeat_off(message):
+    global repeat_mode
+    repeat_mode = False
+    bot.reply_to(message, "حالت تکرار خاموش شد ❌")
 
 # 📌 تابع محاسبه تقویم
 def get_calendar_info():
@@ -57,7 +64,7 @@ def get_calendar_info():
 
     return info
 
-# 📌 مناسبت‌ها (مثلاً از keybit.ir)
+# 📌 مناسبت‌ها (از keybit.ir)
 def get_events():
     try:
         res = requests.get("https://api.keybit.ir/public/calendar")
@@ -74,30 +81,13 @@ def get_events():
 def handle_calendar(message):
     cal_info = get_calendar_info()
     events_info = get_events()
-
-    # 📷 اگر عکس مناسبت روز وجود داشت
-    try:
-        res = requests.get("https://api.keybit.ir/public/calendar", timeout=5)
-        data = res.json()
-        if "image" in data:
-            bot.send_photo(message.chat.id, data["image"], caption=cal_info + "\n\n" + events_info)
-            return
-    except:
-        pass
-
-    # در غیر اینصورت فقط متن
     bot.send_message(message.chat.id, cal_info + "\n\n" + events_info)
 
-
-def set_repeat_off(message):
-    global repeat_mode
-    repeat_mode = False
-    bot.reply_to(message, "حالت تکرار خاموش شد ❌")
-
+# ===== سکوت و مدیریت =====
 def mute_user(message, minutes):
     user_id = message.reply_to_message.from_user.id if message.reply_to_message else None
     if user_id:
-        mute_users[user_id] = minutes
+        mute_users[user_id] = datetime.datetime.now() + datetime.timedelta(minutes=minutes)
         bot.reply_to(message, f"کاربر سکوت شد برای {minutes} دقیقه 🔇")
 
 def unmute_user(message):
@@ -114,8 +104,17 @@ def delete_message(message):
 # ===== هندل پیام‌ها =====
 @bot.message_handler(func=lambda m: True)
 def handle_text(message):
+    global repeat_mode
+
+    user_id = message.from_user.id
+    now = datetime.datetime.now()
+
+    # بررسی سکوت
+    if user_id in mute_users and mute_users[user_id] > now:
+        bot.delete_message(message.chat.id, message.message_id)
+        return
+
     text = message.text.strip()
-    
     if "تکرار روشن" in text:
         set_repeat_on(message)
     elif "تکرار خاموش" in text:
@@ -127,20 +126,13 @@ def handle_text(message):
         if len(parts) > 1 and parts[1].isdigit():
             mute_user(message, int(parts[1]))
         else:
-            mute_user(message, 0)
+            mute_user(message, 1)
     elif text.startswith("رف"):
         unmute_user(message)
     elif "دل" in text:
         delete_message(message)
     elif repeat_mode:
         bot.reply_to(message, text)
-
-# ===== بررسی سکوت کاربران =====
-@bot.message_handler(func=lambda m: True)
-def check_mute(message):
-    user_id = message.from_user.id
-    if user_id in mute_users:
-        bot.delete_message(message.chat.id, message.message_id)
 
 # ===== وب هوک =====
 @app.route(f"/{TOKEN}", methods=["POST"])
@@ -161,4 +153,3 @@ bot.set_webhook(url=f"{WEBHOOK_URL}/{TOKEN}")
 # ===== اجرای Flask =====
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=PORT)
-
