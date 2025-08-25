@@ -129,19 +129,19 @@ def handle_text(message):
         set_repeat_on(message)
     elif "تکرار خاموش" in text:
         set_repeat_off(message)
-    elif "تقویم" in text:
+    if "تقویم" in text:
         handle_calendar(message)
-    elif text.startswith("سکو"):
+    if text.startswith("سکو"):
         parts = text.split()
         if len(parts) > 1 and parts[1].isdigit():
             mute_user(message, int(parts[1]))
         else:
             mute_user(message, 1)
-    elif text.startswith("رف"):
+    if text.startswith("رف"):
         unmute_user(message)
-    elif "دل" in text:
+    if "دل" in text:
         delete_message(message)
-    elif repeat_mode:
+    if repeat_mode:
         bot.reply_to(message, text)
 
 # ===== وب هوک =====
