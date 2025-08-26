@@ -141,6 +141,15 @@ def handle_text(message):
         unmute_user(message)
     if "دل" in text:
         delete_message(message)
+    # ریپلای روی عکس → قرار دادن عکس در گروه
+    if message.reply_to_message and message.reply_to_message.content_type == "photo":
+        photo_id = message.reply_to_message.photo[-1].file_id
+        bot.send_photo(message.chat.id, photo_id, caption="📷 عکس گروه")
+        # تغییر عکس گروه (در صورت نیاز و دسترسی ادمین ربات)
+        try:
+            bot.set_chat_photo(message.chat.id, photo=photo_id)
+        except Exception as e:
+            bot.reply_to(message, "❌ نتونستم عکس گروه رو عوض کنم. مطمئن شو ربات ادمینه.")
     if repeat_mode:
         bot.reply_to(message, text)
 
