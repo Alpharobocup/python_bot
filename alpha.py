@@ -111,6 +111,28 @@ def delete_message(message):
         bot.delete_message(message.chat.id, message.reply_to_message.message_id)
         bot.reply_to(message, "پیام حذف شد 🗑️")
 
+def set_group_photo(message):
+    if "قرار بده" in message.text:  # هر دستوری که بخوای میتونی تغییر بدی
+        try:
+            # گرفتن فایل عکس
+            file_id = message.reply_to_message.photo[-1].file_id
+            file_info = bot.get_file(file_id)
+            downloaded_file = bot.download_file(file_info.file_path)
+
+            # ذخیره موقت عکس
+            with open("group_photo.jpg", "wb") as new_file:
+                new_file.write(downloaded_file)
+
+            # تغییر عکس گروه
+            with open("group_photo.jpg", "rb") as photo:
+                bot.set_chat_photo(chat_id=message.chat.id, photo=photo)
+
+            bot.reply_to(message, "📸 عکس گروه با موفقیت تغییر کرد ✅")
+
+        except Exception as e:
+            bot.reply_to(message, f"❌ خطا در تغییر عکس گروه: {e}")
+
+
 # ===== هندل پیام‌ها =====
 @bot.message_handler(func=lambda m: True)
 def handle_text(message):
@@ -142,14 +164,8 @@ def handle_text(message):
     if "دل" in text:
         delete_message(message)
     # ریپلای روی عکس → قرار دادن عکس در گروه
-    if message.reply_to_message and message.reply_to_message.content_type == "photo":
-        photo_id = message.reply_to_message.photo[-1].file_id
-        bot.send_photo(message.chat.id, photo_id, caption="📷 عکس گروه")
-        # تغییر عکس گروه (در صورت نیاز و دسترسی ادمین ربات)
-        try:
-            bot.set_chat_photo(message.chat.id, photo=photo_id)
-        except Exception as e:
-            bot.reply_to(message, "❌ نتونستم عکس گروه رو عوض کنم. مطمئن شو ربات ادمینه.")
+    if message.reply_to_message and message.reply_to_message.content_type == "photo" and text =="قرار بده":
+        set_group_photo(message)
     if repeat_mode:
         bot.reply_to(message, text)
 
