@@ -175,26 +175,33 @@ def update_file(new_content, sha):
 
 def save_user_and_id(sender, user_text):
     try:
+        # گرفتن محتوا و SHA فایل
         content, sha = get_file()
         try:
             data_json = json.loads(content)
-            if "records" not in data_json:
-                data_json["records"] = []
         except:
-            data_json = {"records": []}
+            data_json = {}
 
-        
-        # ذخیره رکورد جدید
+        # اگر کلید "records" وجود ندارد، بساز
+        if "records" not in data_json:
+            data_json["records"] = []
+
+        # اضافه کردن رکورد جدید
         data_json["records"].append({
             "sender_id": sender.id,
             "sender_username": sender.username or None,
             "sent_id": user_text
         })
-        
+
         new_content = json.dumps(data_json, indent=2, ensure_ascii=False)
-        update_file(new_content, sha)
+
+        print("SHA فایل قبل از آپدیت:", sha)
+        res = update_file(new_content, sha)
+        print("نتیجه آپدیت GitHub:", res)
+
     except Exception as e:
-        print("خطا در ذخیره:", e)
+        print("خطا در ذخیره رکورد:", e)
+
 
 
 
