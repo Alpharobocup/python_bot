@@ -178,8 +178,11 @@ def save_user_and_id(sender, user_text):
         content, sha = get_file()
         try:
             data_json = json.loads(content)
+            if "records" not in data_json:
+                data_json["records"] = []
         except:
             data_json = {"records": []}
+
         
         # ذخیره رکورد جدید
         data_json["records"].append({
