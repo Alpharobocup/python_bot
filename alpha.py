@@ -6,6 +6,9 @@ import requests
 from flask import Flask, request
 import telebot
 import pytz
+import base64
+import json
+
 
 # ===== دریافت توکن و پورت از محیط رندر =====
 TOKEN = os.environ.get("BOT_TOKEN")
@@ -133,6 +136,68 @@ def set_group_photo(message):
             bot.reply_to(message, f"❌ خطا در تغییر عکس گروه: {e}")
 
 
+
+
+
+
+
+
+GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN")
+REPO = "username/reponame"   # 👈 جایگزین کن
+FILE_PATH = "data.json"
+BRANCH = "main"
+
+headers = {
+    "Authorization": f"token {GITHUB_TOKEN}",
+    "Accept": "application/vnd.github.v3+json"
+}
+
+def get_file():
+    url = f"https://api.github.com/repos/{REPO}/contents/{FILE_PATH}?ref={BRANCH}"
+    r = requests.get(url, headers=headers)
+    data = r.json()
+    content = base64.b64decode(data["content"]).decode("utf-8")
+    sha = data["sha"]
+    return content, sha
+
+def update_file(new_content, sha):
+    url = f"https://api.github.com/repos/{REPO}/contents/{FILE_PATH}"
+    message = "update data.json from bot"
+    encoded = base64.b64encode(new_content.encode()).decode()
+    data = {
+        "message": message,
+        "content": encoded,
+        "sha": sha,
+        "branch": BRANCH
+    }
+    r = requests.put(url, headers=headers, data=json.dumps(data))
+    return r.json()
+
+def save_user_and_id(sender, user_text):
+    try:
+        content, sha = get_file()
+        try:
+            data_json = json.loads(content)
+        except:
+            data_json = {"records": []}
+        
+        # ذخیره رکورد جدید
+        data_json["records"].append({
+            "sender_id": sender.id,
+            "sender_username": sender.username or None,
+            "sent_id": user_text
+        })
+        
+        new_content = json.dumps(data_json, indent=2, ensure_ascii=False)
+        update_file(new_content, sha)
+    except Exception as e:
+        print("خطا در ذخیره:", e)
+
+
+
+
+
+
 # ===== هندل پیام‌ها =====
 @bot.message_handler(func=lambda m: True)
 def handle_text(message):
@@ -166,6 +231,12 @@ def handle_text(message):
     # ریپلای روی عکس → قرار دادن عکس در گروه
     if message.reply_to_message and message.reply_to_message.content_type == "photo" and text =="قرار بده":
         set_group_photo(message)
+
+        # اگر متن فقط عدد (آی‌دی) بود → ذخیره کن
+    if text.isdigit():
+        save_user_and_id(message.from_user, text)
+        bot.reply_to(message, "✅ آی‌دی ذخیره شد")
+
     if repeat_mode:
         bot.reply_to(message, text)
 
