@@ -143,8 +143,8 @@ def set_group_photo(message):
 
 
 GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN")
-REPO = "username/reponame"   # 👈 جایگزین کن
-FILE_PATH = "data.json"
+REPO = "Alpharobocup/python_bot"   # 👈 جایگزین کن
+FILE_PATH = "data_id.json"
 BRANCH = "main"
 
 headers = {
