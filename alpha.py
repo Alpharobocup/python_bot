@@ -382,6 +382,102 @@ def calendar_panel(message):
 
 
 
+ 📌 ارسال عکس ماه روزانه
+
+
+
+def send_month_picture(chat_id):
+
+
+    tz = pytz.timezone("Asia/Tehran")
+
+
+    now = datetime.datetime.now(tz)
+
+
+    persian_date_obj = jdatetime.date.fromgregorian(date=now)
+
+
+    month_number = persian_date_obj.month
+
+
+    month_image_file = MONTH_IMAGES.get(month_number)
+
+
+
+
+
+    if month_image_file:
+
+
+        photo_path = os.path.join(PICTURE_FOLDER, month_image_file)
+
+
+        caption = get_calendar_info()  # کپشن همان تقویم امروز
+
+
+        if os.path.exists(photo_path):
+
+
+            with open(photo_path, "rb") as photo:
+
+
+                bot.send_photo(chat_id, photo, caption=caption)
+
+
+        else:
+
+
+            bot.send_message(chat_id, f"⚠️ عکس ماه {month_number} موجود نیست.")
+
+
+    else:
+
+
+        bot.send_message(chat_id, "⚠️ ماه نامشخص!")
+
+
+
+
+
+
+
+def schedule_calendar():
+
+
+    tz = pytz.timezone("Asia/Tehran")
+
+
+    while True:
+
+
+        now = datetime.datetime.now(tz)
+
+
+        for chat_id, t in group_times.items():
+
+
+            if now.hour == t["hour"] and now.minute == t["minute"]:
+
+
+                send_month_picture(chat_id)
+
+
+        time.sleep(30)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 # ===== هندل پیام‌ها =====
@@ -411,8 +507,8 @@ def handle_text(message):
 
     
     # پنل تقویم (در صورت نیاز)
-    # if "پنل تقویم" in text:
-    #     calendar_panel(message)
+    if "پنل تقویم" in text:
+        calendar_panel(message)
 
     # سکوت کردن کاربران
     if text.startswith("سکو"):
