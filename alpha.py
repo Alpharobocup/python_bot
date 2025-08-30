@@ -6,8 +6,7 @@ import requests
 from flask import Flask, request
 import telebot
 import pytz
-import base64
-import json
+
 
 
 # ===== دریافت توکن و پورت از محیط رندر =====
@@ -34,32 +33,34 @@ def set_repeat_off(message):
     bot.reply_to(message, "حالت تکرار خاموش شد ❌")
 
 
+
+# مسیر عکس‌ها
+PICTURE_FOLDER = "pictures"  # پوشه‌ای که 12 عکس ماه‌ها اینجاست
+MONTH_IMAGES = {
+    1: "farvardin.jpg",
+    2: "ordibehesht.jpg",
+    3: "khordad.jpg",
+    4: "tir.jpg",
+    5: "mordad.jpg",
+    6: "shahrivar.jpg",
+    7: "mehr.jpg",
+    8: "aban.jpg",
+    9: "azar.jpg",
+    10: "dey.jpg",
+    11: "bahman.jpg",
+    12: "esfand.jpg"
+}
+
 # 📌 تابع محاسبه تقویم
 def get_calendar_info():
-    # زمان با تایم‌زون تهران
     tz = pytz.timezone("Asia/Tehran")
     now = datetime.datetime.now(tz)
-
-    # تاریخ میلادی
     gregorian_date = now.strftime("%Y-%m-%d")
-
-    # تاریخ شمسی
     persian_date_obj = jdatetime.date.fromgregorian(date=now)
-    persian_date = persian_date_obj.strftime("%Y-%m-%d")
-
-    # تاریخ شمسی به صورت "۴ شهریور ۱۴۰۴"
-    persian_date_text = persian_date_obj.strftime("%d %B %Y")
-    # تبدیل ماه و اعداد به فارسی
-    persian_date_text = jdatetime.date.fromgregorian(date=now).strftime("%-d %B %Y")
-    
-    # تاریخ قمری
+    persian_date_text = persian_date_obj.strftime("%-d %B %Y")
     hijri_date = convert.Gregorian(now.year, now.month, now.day).to_hijri()
     hijri_str = f"{hijri_date.day}-{hijri_date.month}-{hijri_date.year}"
-
-    # ساعت دقیق (به وقت تهران)
     time_now = now.strftime("%H:%M:%S")
-
-    # درصد سال گذشته و مانده بر اساس سال شمسی
     start_year = jdatetime.date(persian_date_obj.year, 1, 1).togregorian()
     end_year = jdatetime.date(persian_date_obj.year + 1, 1, 1).togregorian()
     total_days = (end_year - start_year).days
@@ -77,24 +78,33 @@ def get_calendar_info():
 
     return info
 
-# 📌 مناسبت‌ها (از keybit.ir)
-def get_events():
-    try:
-        res = requests.get("https://api.keybit.ir/public/calendar")
-        data = res.json()
-        events = data.get("events", [])
-        if events:
-            return "📌 مناسبت‌های امروز:\n" + "\n".join(["- " + e["title"] for e in events])
-        else:
-            return "📌 امروز مناسبت خاصی نداره."
-    except:
-        return "⚠️ خطا در دریافت مناسبت‌ها."
+# 📌 هندلر تقویم (دستی)
+@bot.message_handler(commands=["calendar"])
+def handle_calendar_manual(message):
+    info = get_calendar_info()
+    bot.send_message(message.chat.id, info)
 
-# 📌 هندلر تقویم
-def handle_calendar(message):
-    cal_info = get_calendar_info()
-    events_info = get_events()
-    bot.send_message(message.chat.id, cal_info + "\n\n" + events_info)
+# 📌 ارسال عکس ماه روزانه
+def send_month_picture(chat_id):
+    tz = pytz.timezone("Asia/Tehran")
+    now = datetime.datetime.now(tz)
+    persian_date_obj = jdatetime.date.fromgregorian(date=now)
+    month_number = persian_date_obj.month
+    month_image_file = MONTH_IMAGES.get(month_number)
+
+    if month_image_file:
+        photo_path = os.path.join(PICTURE_FOLDER, month_image_file)
+        caption = get_calendar_info()  # کپشن همان تقویم امروز
+        if os.path.exists(photo_path):
+            with open(photo_path, "rb") as photo:
+                bot.send_photo(chat_id, photo, caption=caption)
+        else:
+            bot.send_message(chat_id, f"⚠️ عکس ماه {month_number} موجود نیست.")
+    else:
+        bot.send_message(chat_id, "⚠️ ماه نامشخص!")
+
+# مثال: برای استفاده روزانه
+# send_month_picture(CHAT_ID)  # اینجا CHAT_ID کانال یا گروه شماست
 
 # ===== سکوت و مدیریت =====
 def mute_user(message, minutes):
@@ -142,71 +152,6 @@ def set_group_photo(message):
 
 
 
-GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN")
-REPO = "Alpharobocup/python_bot"   # 👈 جایگزین کن
-FILE_PATH = "data_id.json"
-BRANCH = "main"
-
-headers = {
-    "Authorization": f"token {GITHUB_TOKEN}",
-    "Accept": "application/vnd.github.v3+json"
-}
-
-def get_file():
-    url = f"https://api.github.com/repos/{REPO}/contents/{FILE_PATH}?ref={BRANCH}"
-    r = requests.get(url, headers=headers)
-    data = r.json()
-    content = base64.b64decode(data["content"]).decode("utf-8")
-    sha = data["sha"]
-    return content, sha
-
-def update_file(new_content, sha):
-    url = f"https://api.github.com/repos/{REPO}/contents/{FILE_PATH}"
-    message = "update data.json from bot"
-    encoded = base64.b64encode(new_content.encode()).decode()
-    data = {
-        "message": message,
-        "content": encoded,
-        "sha": sha,
-        "branch": BRANCH
-    }
-    r = requests.put(url, headers=headers, data=json.dumps(data))
-    return r.json()
-
-def save_user_and_id(sender, user_text):
-    try:
-        # گرفتن محتوا و SHA فایل
-        content, sha = get_file()
-        try:
-            data_json = json.loads(content)
-        except:
-            data_json = {}
-
-        # اگر کلید "records" وجود ندارد، بساز
-        if "records" not in data_json:
-            data_json["records"] = []
-
-        # اضافه کردن رکورد جدید
-        data_json["records"].append({
-            "sender_id": sender.id,
-            "sender_username": sender.username or None,
-            "sent_id": user_text
-        })
-
-        new_content = json.dumps(data_json, indent=2, ensure_ascii=False)
-
-        print("SHA فایل قبل از آپدیت:", sha)
-        res = update_file(new_content, sha)
-        print("نتیجه آپدیت GitHub:", res)
-
-    except Exception as e:
-        print("خطا در ذخیره رکورد:", e)
-
-
-
-
-
-
 
 # ===== هندل پیام‌ها =====
 @bot.message_handler(func=lambda m: True)
@@ -241,11 +186,6 @@ def handle_text(message):
     # ریپلای روی عکس → قرار دادن عکس در گروه
     if message.reply_to_message and message.reply_to_message.content_type == "photo" and text =="قرار بده":
         set_group_photo(message)
-
-        # اگر متن فقط عدد (آی‌دی) بود → ذخیره کن
-    if text.isdigit():
-        save_user_and_id(message.from_user, text)
-        bot.reply_to(message, "✅ آی‌دی ذخیره شد")
 
     if repeat_mode:
         bot.reply_to(message, text)
