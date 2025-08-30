@@ -269,7 +269,7 @@ def handle_text(message):
     if text == "تقویم":
         handle_calendar(message)
     if text == "پنل تقویم":
-        handle_calendar(message)
+        schedule_calendar(message)
     if text.startswith("سکو"):
         parts = text.split()
         if len(parts) > 1 and parts[1].isdigit():
