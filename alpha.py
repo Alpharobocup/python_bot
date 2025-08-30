@@ -226,21 +226,21 @@ def send_month_picture(chat_id):
 import threading
 import time
 from datetime import datetime
-
 def schedule_calendar():
+    tz = pytz.timezone("Asia/Tehran")
     while True:
-        now = datetime.now()
+        now = datetime.datetime.now(tz)
         for chat_id, t in group_times.items():
             if now.hour == t["hour"] and now.minute == t["minute"]:
-                send_month_picture(chat_id)  # تابع ارسال عکس + کپشن تقویم
-        time.sleep(30)  # هر 30 ثانیه چک می‌کنه
+                send_month_picture(chat_id)
+        time.sleep(30)
 
 
 threading.Thread(target=schedule_calendar, daemon=True).start()
 
 
 
-@bot.message_handler(func=lambda m: m.text and m.text.strip() == "پنل تقویم")
+#@bot.message_handler(func=lambda m: m.text and m.text.strip() == "پنل تقویم")
 def calendar_panel(message):
     chat_id = message.chat.id
 
@@ -278,6 +278,8 @@ def handle_text(message):
         set_repeat_off(message)
     if "تقویم" in text:
         handle_calendar(message)
+    if "پنل تقویم" in text: 
+        calendar_panel(message)
     if text.startswith("سکو"):
         parts = text.split()
         if len(parts) > 1 and parts[1].isdigit():
