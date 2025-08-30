@@ -103,27 +103,6 @@ def handle_calendar(message):
     else:
         bot.send_message(message.chat.id, cal_info + f"\n⚠️ عکس ماه پیدا نشد: {image_file}")
 
-# 📌 ارسال عکس ماه روزانه
-def send_month_picture(chat_id):
-    tz = pytz.timezone("Asia/Tehran")
-    now = datetime.datetime.now(tz)
-    persian_date_obj = jdatetime.date.fromgregorian(date=now)
-    month_number = persian_date_obj.month
-    month_image_file = MONTH_IMAGES.get(month_number)
-
-    if month_image_file:
-        photo_path = os.path.join(PICTURE_FOLDER, month_image_file)
-        caption = get_calendar_info()  # کپشن همان تقویم امروز
-        if os.path.exists(photo_path):
-            with open(photo_path, "rb") as photo:
-                bot.send_photo(chat_id, photo, caption=caption)
-        else:
-            bot.send_message(chat_id, f"⚠️ عکس ماه {month_number} موجود نیست.")
-    else:
-        bot.send_message(chat_id, "⚠️ ماه نامشخص!")
-
-# مثال: برای استفاده روزانه
-# send_month_picture(CHAT_ID)  # اینجا CHAT_ID کانال یا گروه شماست
 
 # ===== سکوت و مدیریت =====
 def mute_user(message, minutes):
@@ -243,6 +222,19 @@ threading.Thread(target=schedule_calendar, daemon=True).start()
 
 
 
+@bot.message_handler(func=lambda m: m.text and m.text.strip() == "پنل تقویم")
+def calendar_panel(message):
+    chat_id = message.chat.id
+
+    # اگر گروه هنوز در group_times نیست، مقدار پیش‌فرض بذار
+    if chat_id not in group_times:
+        group_times[chat_id] = {"hour": 6, "minute": 0}
+
+    # ارسال پنل زمان با ساعت و دقیقه فعلی گروه
+    bot.send_message(chat_id, "پنل تنظیم ساعت تقویم:", reply_markup=build_time_panel(
+        hour=group_times[chat_id]["hour"], 
+        minute=group_times[chat_id]["minute"]
+    ))
 
 
 
@@ -268,8 +260,6 @@ def handle_text(message):
         set_repeat_off(message)
     if text == "تقویم":
         handle_calendar(message)
-    if text == "پنل تقویم":
-        schedule_calendar(message)
     if text.startswith("سکو"):
         parts = text.split()
         if len(parts) > 1 and parts[1].isdigit():
