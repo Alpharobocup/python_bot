@@ -204,6 +204,24 @@ def handle_time_buttons(call):
     # آپدیت پیام با ساعت و دقیقه جدید
     bot.edit_message_reply_markup(chat_id, call.message.message_id, reply_markup=build_time_panel(hour, minute))
 
+# 📌 ارسال عکس ماه روزانه
+def send_month_picture(chat_id):
+    tz = pytz.timezone("Asia/Tehran")
+    now = datetime.datetime.now(tz)
+    persian_date_obj = jdatetime.date.fromgregorian(date=now)
+    month_number = persian_date_obj.month
+    month_image_file = MONTH_IMAGES.get(month_number)
+
+    if month_image_file:
+        photo_path = os.path.join(PICTURE_FOLDER, month_image_file)
+        caption = get_calendar_info()  # کپشن همان تقویم امروز
+        if os.path.exists(photo_path):
+            with open(photo_path, "rb") as photo:
+                bot.send_photo(chat_id, photo, caption=caption)
+        else:
+            bot.send_message(chat_id, f"⚠️ عکس ماه {month_number} موجود نیست.")
+    else:
+        bot.send_message(chat_id, "⚠️ ماه نامشخص!")
 
 import threading
 import time
