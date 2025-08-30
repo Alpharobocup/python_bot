@@ -93,50 +93,50 @@ def handle_calendar(message):
     
     # بررسی وجود عکس
     if os.path.exists(photo_path):
-    with open(photo_path, "rb") as photo:
-    bot.send_photo(message.chat.id, photo, caption=cal_info)
+        with open(photo_path, "rb") as photo:
+        bot.send_photo(message.chat.id, photo, caption=cal_info)
     else:
-    bot.send_message(message.chat.id, cal_info + f"\n⚠️ عکس ماه پیدا نشد: {image_file}")
+        bot.send_message(message.chat.id, cal_info + f"\n⚠️ عکس ماه پیدا نشد: {image_file}")
 
 
 # ===== سکوت و مدیریت =====
 def mute_user(message, minutes):
     user_id = message.reply_to_message.from_user.id if message.reply_to_message else None
     if user_id:
-    mute_users[user_id] = datetime.datetime.now() + datetime.timedelta(minutes=minutes)
-    bot.reply_to(message, f"کاربر سکوت شد برای {minutes} دقیقه 🔇")
+        mute_users[user_id] = datetime.datetime.now() + datetime.timedelta(minutes=minutes)
+        bot.reply_to(message, f"کاربر سکوت شد برای {minutes} دقیقه 🔇")
 
 def unmute_user(message):
     user_id = message.reply_to_message.from_user.id if message.reply_to_message else None
     if user_id and user_id in mute_users:
-    del mute_users[user_id]
-    bot.reply_to(message, "سکوت کاربر برداشته شد 🔊")
+        del mute_users[user_id]
+        bot.reply_to(message, "سکوت کاربر برداشته شد 🔊")
 
 def delete_message(message):
     if message.reply_to_message:
-    bot.delete_message(message.chat.id, message.reply_to_message.message_id)
-    bot.reply_to(message, "پیام حذف شد 🗑️")
+        bot.delete_message(message.chat.id, message.reply_to_message.message_id)
+        bot.reply_to(message, "پیام حذف شد 🗑️")
 
 def set_group_photo(message):
     if "قرار بده" in message.text:  # هر دستوری که بخوای میتونی تغییر بدی
-    try:
-    # گرفتن فایل عکس
-    file_id = message.reply_to_message.photo[-1].file_id
-    file_info = bot.get_file(file_id)
-    downloaded_file = bot.download_file(file_info.file_path)
+        try:
+        # گرفتن فایل عکس
+        file_id = message.reply_to_message.photo[-1].file_id
+        file_info = bot.get_file(file_id)
+        downloaded_file = bot.download_file(file_info.file_path)
     
-    # ذخیره موقت عکس
-    with open("group_photo.jpg", "wb") as new_file:
-    new_file.write(downloaded_file)
-    
-    # تغییر عکس گروه
-    with open("group_photo.jpg", "rb") as photo:
-    bot.set_chat_photo(chat_id=message.chat.id, photo=photo)
-    
-    bot.reply_to(message, "📸 عکس گروه با موفقیت تغییر کرد ✅")
+        # ذخیره موقت عکس
+        with open("group_photo.jpg", "wb") as new_file:
+        new_file.write(downloaded_file)
+        
+        # تغییر عکس گروه
+        with open("group_photo.jpg", "rb") as photo:
+        bot.set_chat_photo(chat_id=message.chat.id, photo=photo)
+        
+        bot.reply_to(message, "📸 عکس گروه با موفقیت تغییر کرد ✅")
     
     except Exception as e:
-    bot.reply_to(message, f"❌ خطا در تغییر عکس گروه: {e}")
+        bot.reply_to(message, f"❌ خطا در تغییر عکس گروه: {e}")
 
 
 
@@ -154,21 +154,21 @@ def handle_text(message):
     
     # بررسی سکوت
     if user_id in mute_users and mute_users[user_id] > now:
-    bot.delete_message(message.chat.id, message.message_id)
-    return
+        bot.delete_message(message.chat.id, message.message_id)
+        return
     
     text = message.text.strip()
     
     # روشن/خاموش کردن حالت تکرار
     if "تکرار روشن" in text:
-    set_repeat_on(message)
+        set_repeat_on(message)
     elif "تکرار خاموش" in text:
-    set_repeat_off(message)
+        set_repeat_off(message)
     
     # نمایش تقویم
     
     if text.strip() == "تقویم":
-    handle_calendar(message)
+        handle_calendar(message)
     
     
     # پنل تقویم (در صورت نیاز)
@@ -177,27 +177,27 @@ def handle_text(message):
     
     # سکوت کردن کاربران
     if text.startswith("سکو"):
-    parts = text.split()
-    if len(parts) > 1 and parts[1].isdigit():
-    mute_user(message, int(parts[1]))
-    else:
-    mute_user(message, 1)
+        parts = text.split()
+        if len(parts) > 1 and parts[1].isdigit():
+            mute_user(message, int(parts[1]))
+        else:
+            mute_user(message, 1)
     
     # رفع سکوت
     if text.startswith("رف"):
-    unmute_user(message)
+        unmute_user(message)
     
     # حذف پیام
     if "دل" in text:
-    delete_message(message)
+        delete_message(message)
     
     # ریپلای روی عکس → قرار دادن عکس در گروه
     if message.reply_to_message and message.reply_to_message.content_type == "photo" and text == "قرار بده":
-    set_group_photo(message)
+        set_group_photo(message)
     
     # حالت تکرار
     if repeat_mode:
-    bot.reply_to(message, text)
+        bot.reply_to(message, text)
 
 
 # ===== وب هوک =====
