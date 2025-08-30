@@ -258,7 +258,7 @@ def handle_text(message):
         set_repeat_on(message)
     elif "تکرار خاموش" in text:
         set_repeat_off(message)
-    if text == "تقویم":
+    if "تقویم" in text:
         handle_calendar(message)
     if text.startswith("سکو"):
         parts = text.split()
@@ -266,9 +266,9 @@ def handle_text(message):
             mute_user(message, int(parts[1]))
         else:
             mute_user(message, 1)
-    if text == "رف":
+    if text.startswith("رف"):
         unmute_user(message)
-    if text == "دل":
+    if "دل" in text:
         delete_message(message)
     # ریپلای روی عکس → قرار دادن عکس در گروه
     if message.reply_to_message and message.reply_to_message.content_type == "photo" and text =="قرار بده":
