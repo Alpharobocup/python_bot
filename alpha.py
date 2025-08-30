@@ -37,19 +37,20 @@ def set_repeat_off(message):
 # مسیر عکس‌ها
 PICTURE_FOLDER = "pictures"  # پوشه‌ای که 12 عکس ماه‌ها اینجاست
 MONTH_IMAGES = {
-    1: "farvardin.jpg",
-    2: "ordibehesht.jpg",
-    3: "khordad.jpg",
-    4: "tir.jpg",
-    5: "mordad.jpg",
-    6: "shahrivar.jpg",
-    7: "mehr.jpg",
-    8: "aban.jpg",
-    9: "azar.jpg",
-    10: "dey.jpg",
-    11: "bahman.jpg",
-    12: "esfand.jpg"
+    1: "farvardin.png",
+    2: "ordibehesht.png",
+    3: "khordad.png",
+    4: "tir.png",
+    5: "mordad.png",
+    6: "shahrivar.png",
+    7: "mehr.png",
+    8: "aban.png",
+    9: "azar.png",
+    10: "dey.png",
+    11: "bahman.png",
+    12: "esfand.png"
 }
+
 
 # 📌 تابع محاسبه تقویم
 def get_calendar_info():
