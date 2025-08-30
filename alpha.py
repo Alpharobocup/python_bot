@@ -321,77 +321,6 @@ def handle_time_buttons(call):
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-threading.Thread(target=schedule_calendar, daemon=True).start()
-
-
-
-
-
-
-
-
-
-
-
-#@bot.message_handler(func=lambda m: m.text and m.text.strip() == "پنل تقویم")
-
-
-def calendar_panel(message):
-
-
-    chat_id = message.chat.id
-
-
-
-
-
-    # اگر گروه هنوز در group_times نیست، مقدار پیش‌فرض بذار
-
-
-    if chat_id not in group_times:
-
-
-        group_times[chat_id] = {"hour": 6, "minute": 0}
-
-
-
-
-
-    # ارسال پنل زمان با ساعت و دقیقه فعلی گروه
-
-
-    bot.send_message(chat_id, "پنل تنظیم ساعت تقویم:", reply_markup=build_time_panel(
-
-
-        hour=group_times[chat_id]["hour"], 
-
-
-        minute=group_times[chat_id]["minute"]
-
-
-    ))
-
-
-
-
-
-
-
-
-
-
-
 # 📌 ارسال عکس ماه روزانه
 
 
@@ -474,6 +403,77 @@ def schedule_calendar():
 
 
         time.sleep(30)
+
+
+
+
+
+
+
+
+
+
+
+
+threading.Thread(target=schedule_calendar, daemon=True).start()
+
+
+
+
+
+
+
+
+
+
+
+#@bot.message_handler(func=lambda m: m.text and m.text.strip() == "پنل تقویم")
+
+
+def calendar_panel(message):
+
+
+    chat_id = message.chat.id
+
+
+
+
+
+    # اگر گروه هنوز در group_times نیست، مقدار پیش‌فرض بذار
+
+
+    if chat_id not in group_times:
+
+
+        group_times[chat_id] = {"hour": 6, "minute": 0}
+
+
+
+
+
+    # ارسال پنل زمان با ساعت و دقیقه فعلی گروه
+
+
+    bot.send_message(chat_id, "پنل تنظیم ساعت تقویم:", reply_markup=build_time_panel(
+
+
+        hour=group_times[chat_id]["hour"], 
+
+
+        minute=group_times[chat_id]["minute"]
+
+
+    ))
+
+
+
+
+
+
+
+
+
+
 
 
 
