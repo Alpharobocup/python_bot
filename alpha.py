@@ -103,7 +103,7 @@ def unmute_user(message):
         bot.reply_to(message, "سکوت کاربر برداشته شد 🔊")
 
 def delete_message(message):
-    if message.reply_to_message && message.text.strip() == "حذف":
+    if message.reply_to_message and message.text.strip() == "حذف":
         bot.delete_message(message.chat.id, message.reply_to_message.message_id)
         bot.reply_to(message, "پیام حذف شد 🗑️")
 
