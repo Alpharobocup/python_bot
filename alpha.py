@@ -168,8 +168,9 @@ def handle_text(message):
         set_repeat_off(message)
 
     # نمایش تقویم
-    if "تقویم" in text:
+    if text.strip() == "تقویم":
         handle_calendar(message)
+
     
     # پنل تقویم (در صورت نیاز)
     # if "پنل تقویم" in text:
@@ -207,6 +208,7 @@ def webhook():
     update = telebot.types.Update.de_json(json_str)
     bot.process_new_updates([update])
     return "!", 200
+
 
 @app.route("/")
 def index():
