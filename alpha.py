@@ -6,9 +6,10 @@ import requests
 from flask import Flask, request
 import telebot
 import pytz
-
-
-
+from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
+import threading
+import time
+from datetime import datetime
 # ===== دریافت توکن و پورت از محیط رندر =====
 TOKEN = os.environ.get("BOT_TOKEN")
 WEBHOOK_URL = os.environ.get("WEBHOOK_URL")  # مثلا: https://your-app.onrender.com
@@ -34,11 +35,7 @@ def set_repeat_off(message):
 
 
 
-import os
-import datetime
-import jdatetime
-import pytz
-from hijri_converter import convert
+
 
 # مسیر پوشه عکس‌ها (داخل فولدر پروژه)
 PICTURE_FOLDER = os.path.join(os.path.dirname(__file__), "pictures")
@@ -146,7 +143,7 @@ def set_group_photo(message):
 
 
 
-from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
+
 
 def build_time_panel(hour=6, minute=0):
     markup = InlineKeyboardMarkup(row_width=3)
@@ -223,9 +220,7 @@ def send_month_picture(chat_id):
     else:
         bot.send_message(chat_id, "⚠️ ماه نامشخص!")
 
-import threading
-import time
-from datetime import datetime
+
 def schedule_calendar():
     tz = pytz.timezone("Asia/Tehran")
     while True:
@@ -257,7 +252,6 @@ def calendar_panel(message):
 
 
 
-
 # ===== هندل پیام‌ها =====
 @bot.message_handler(func=lambda m: True)
 def handle_text(message):
@@ -272,30 +266,45 @@ def handle_text(message):
         return
 
     text = message.text.strip()
+
+    # روشن/خاموش کردن حالت تکرار
     if "تکرار روشن" in text:
         set_repeat_on(message)
     elif "تکرار خاموش" in text:
         set_repeat_off(message)
+
+    # نمایش تقویم
     if "تقویم" in text:
         handle_calendar(message)
-    if "پنل تقویم" in text: 
-        calendar_panel(message)
+    
+    # پنل تقویم (در صورت نیاز)
+    # if "پنل تقویم" in text:
+    #     calendar_panel(message)
+
+    # سکوت کردن کاربران
     if text.startswith("سکو"):
         parts = text.split()
         if len(parts) > 1 and parts[1].isdigit():
             mute_user(message, int(parts[1]))
         else:
             mute_user(message, 1)
+
+    # رفع سکوت
     if text.startswith("رف"):
         unmute_user(message)
+
+    # حذف پیام
     if "دل" in text:
         delete_message(message)
+
     # ریپلای روی عکس → قرار دادن عکس در گروه
-    if message.reply_to_message and message.reply_to_message.content_type == "photo" and text =="قرار بده":
+    if message.reply_to_message and message.reply_to_message.content_type == "photo" and text == "قرار بده":
         set_group_photo(message)
 
+    # حالت تکرار
     if repeat_mode:
         bot.reply_to(message, text)
+
 
 # ===== وب هوک =====
 @app.route(f"/{TOKEN}", methods=["POST"])
