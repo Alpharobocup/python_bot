@@ -144,6 +144,246 @@ def set_group_photo(message):
 
 
 
+def build_time_panel(hour=6, minute=0):
+
+
+
+    markup = InlineKeyboardMarkup(row_width=3)
+
+
+    
+
+
+    # ردیف ساعت
+
+
+    markup.add(
+
+
+        InlineKeyboardButton("▲ ساعت", callback_data="hour_up"),
+
+
+        InlineKeyboardButton(f"{hour:02d}h", callback_data="noop"),
+
+
+        InlineKeyboardButton("▼ ساعت", callback_data="hour_down"),
+
+
+    )
+
+
+    
+
+
+    # ردیف دقیقه
+
+
+    markup.add(
+
+
+        InlineKeyboardButton("▲ دقیقه", callback_data="min_up"),
+
+
+        InlineKeyboardButton(f"{minute:02d}m", callback_data="noop"),
+
+
+        InlineKeyboardButton("▼ دقیقه", callback_data="min_down"),
+
+
+    )
+
+
+    
+
+
+    # دکمه تایید
+
+
+    markup.add(
+
+
+        InlineKeyboardButton("✅ تایید", callback_data="confirm_time")
+
+
+    )
+
+
+    return markup
+
+
+
+
+
+
+
+
+# برای هر گروه یک ساعت و دقیقه ذخیره می‌کنیم
+
+
+group_times = {}  # {chat_id: {"hour": 6, "minute": 0}}
+
+
+
+
+
+
+
+
+@bot.callback_query_handler(func=lambda call: True)
+
+
+def handle_time_buttons(call):
+
+
+    chat_id = call.message.chat.id
+
+
+    if chat_id not in group_times:
+
+
+        group_times[chat_id] = {"hour": 6, "minute": 0}
+
+
+    
+
+
+    hour = group_times[chat_id]["hour"]
+
+
+    minute = group_times[chat_id]["minute"]
+
+
+    
+
+
+    if call.data == "hour_up":
+
+
+        hour = (hour + 1) % 24
+
+
+    elif call.data == "hour_down":
+
+
+        hour = (hour - 1) % 24
+
+
+    elif call.data == "min_up":
+
+
+        minute = (minute + 1) % 60
+
+
+    elif call.data == "min_down":
+
+
+        minute = (minute - 1) % 60
+
+
+    elif call.data == "confirm_time":
+
+
+        bot.answer_callback_query(call.id, f"⏰ زمان ارسال پیام تنظیم شد: {hour:02d}:{minute:02d}")
+
+
+        return
+
+
+    
+
+
+    # ذخیره تغییرات
+
+
+    group_times[chat_id]["hour"] = hour
+
+
+    group_times[chat_id]["minute"] = minute
+
+
+    
+
+
+    # آپدیت پیام با ساعت و دقیقه جدید
+
+
+    bot.edit_message_reply_markup(chat_id, call.message.message_id, reply_markup=build_time_panel(hour, minute))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+threading.Thread(target=schedule_calendar, daemon=True).start()
+
+
+
+
+
+
+
+
+
+
+
+#@bot.message_handler(func=lambda m: m.text and m.text.strip() == "پنل تقویم")
+
+
+def calendar_panel(message):
+
+
+    chat_id = message.chat.id
+
+
+
+
+
+    # اگر گروه هنوز در group_times نیست، مقدار پیش‌فرض بذار
+
+
+    if chat_id not in group_times:
+
+
+        group_times[chat_id] = {"hour": 6, "minute": 0}
+
+
+
+
+
+    # ارسال پنل زمان با ساعت و دقیقه فعلی گروه
+
+
+    bot.send_message(chat_id, "پنل تنظیم ساعت تقویم:", reply_markup=build_time_panel(
+
+
+        hour=group_times[chat_id]["hour"], 
+
+
+        minute=group_times[chat_id]["minute"]
+
+
+    ))
+
+
+
+
+
+
+
+
+
+
+
+
+
 # ===== هندل پیام‌ها =====
 @bot.message_handler(func=lambda m: True)
 def handle_text(message):
