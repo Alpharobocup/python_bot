@@ -6,10 +6,8 @@ import requests
 from flask import Flask, request
 import telebot
 import pytz
-from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
-import threading
-import time
-from datetime import datetime
+
+
 # ===== دریافت توکن و پورت از محیط رندر =====
 TOKEN = os.environ.get("BOT_TOKEN")
 WEBHOOK_URL = os.environ.get("WEBHOOK_URL")  # مثلا: https://your-app.onrender.com
