@@ -80,7 +80,6 @@ def get_calendar_info():
     return info
 
 # 📌 هندلر تقویم (دستی)
-@bot.message_handler(commands=["calendar"])
 def handle_calendar_manual(message):
     info = get_calendar_info()
     bot.send_message(message.chat.id, info)
@@ -173,7 +172,7 @@ def handle_text(message):
     elif "تکرار خاموش" in text:
         set_repeat_off(message)
     if "تقویم" in text:
-        handle_calendar(message)
+        handle_calendar_manual(message)
     if text.startswith("سکو"):
         parts = text.split()
         if len(parts) > 1 and parts[1].isdigit():
