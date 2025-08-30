@@ -34,8 +34,16 @@ def set_repeat_off(message):
 
 
 
-# مسیر عکس‌ها
-PICTURE_FOLDER = "pictures"  # پوشه‌ای که 12 عکس ماه‌ها اینجاست
+import os
+import datetime
+import jdatetime
+import pytz
+from hijri_converter import convert
+
+# مسیر پوشه عکس‌ها (داخل فولدر پروژه)
+PICTURE_FOLDER = os.path.join(os.path.dirname(__file__), "pictures")
+
+# نام عکس‌های ماه‌ها (1 = فروردین, 2 = اردیبهشت, … 12 = اسفند)
 MONTH_IMAGES = {
     1: "farvardin.png",
     2: "ordibehesht.png",
@@ -51,17 +59,20 @@ MONTH_IMAGES = {
     12: "esfand.png"
 }
 
-
-# 📌 تابع محاسبه تقویم
+# تابع گرفتن اطلاعات تقویم
 def get_calendar_info():
     tz = pytz.timezone("Asia/Tehran")
     now = datetime.datetime.now(tz)
+
     gregorian_date = now.strftime("%Y-%m-%d")
     persian_date_obj = jdatetime.date.fromgregorian(date=now)
     persian_date_text = persian_date_obj.strftime("%-d %B %Y")
+
     hijri_date = convert.Gregorian(now.year, now.month, now.day).to_hijri()
     hijri_str = f"{hijri_date.day}-{hijri_date.month}-{hijri_date.year}"
+
     time_now = now.strftime("%H:%M:%S")
+
     start_year = jdatetime.date(persian_date_obj.year, 1, 1).togregorian()
     end_year = jdatetime.date(persian_date_obj.year + 1, 1, 1).togregorian()
     total_days = (end_year - start_year).days
@@ -77,12 +88,20 @@ def get_calendar_info():
     info += f"📊 گذشته از سال شمسی: {passed_days} روز ({percent_passed}%)\n"
     info += f"📊 مانده تا پایان سال: {left_days} روز\n"
 
-    return info
+    return info, persian_date_obj.month  # برمی‌گردونه ماه برای عکس
 
-# 📌 هندلر تقویم (دستی)
-def handle_calendar_manual(message):
-    info = get_calendar_info()
-    bot.send_message(message.chat.id, info)
+# هندلر تقویم با عکس
+def handle_calendar(message):
+    cal_info, month = get_calendar_info()
+    image_file = MONTH_IMAGES.get(month)
+    photo_path = os.path.join(PICTURE_FOLDER, image_file)
+
+    # بررسی وجود عکس
+    if os.path.exists(photo_path):
+        with open(photo_path, "rb") as photo:
+            bot.send_photo(message.chat.id, photo, caption=cal_info)
+    else:
+        bot.send_message(message.chat.id, cal_info + f"\n⚠️ عکس ماه پیدا نشد: {image_file}")
 
 # 📌 ارسال عکس ماه روزانه
 def send_month_picture(chat_id):
@@ -172,7 +191,7 @@ def handle_text(message):
     elif "تکرار خاموش" in text:
         set_repeat_off(message)
     if "تقویم" in text:
-        handle_calendar_manual(message)
+        handle_calendar(message)
     if text.startswith("سکو"):
         parts = text.split()
         if len(parts) > 1 and parts[1].isdigit():
