@@ -1,6 +1,5 @@
-python-telegram-bot
-Flask
-python-dotenv
+pytelegrambotapi
+flask
 jdatetime
-hijri-converter
+hijri_converter
 pytz
