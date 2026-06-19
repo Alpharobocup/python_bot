@@ -565,6 +565,6 @@ def delete_webhook():
 # ============ اجرای اصلی ============
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 80))
+    port = int(os.environ.get('PORT', 8080))
     logger.info(f"🚀 ربات نسخه 3.0.0 با Webhook روی پورت {port} در حال اجراست...")
     app.run(host='0.0.0.0', port=port)
