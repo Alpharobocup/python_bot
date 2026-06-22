@@ -21,7 +21,10 @@ app = Flask(__name__)
 # ===== مسیر فایل‌های ذخیره‌سازی =====
 DATA_FILE = "bot_data.json"
 PICTURE_FOLDER = os.path.join(os.path.dirname(__file__), "pictures")
+ADMIN_IDS = [1656900957, 987654321]
 
+def is_admin(message):
+    return message.from_user.id in ADMIN_IDS
 # ===== تصاویر ماه‌های شمسی =====
 MONTH_IMAGES = {
     1: "farvardin.png", 2: "ordibehesht.png", 3: "khordad.png",
@@ -877,6 +880,9 @@ def handle_text(message):
 
         # سکوت
         if text.startswith("سکو"):
+            if not is_admin(message):
+                bot.reply_to(message, "❌ دسترسی نداری")
+            return
             parts = text.split()
             minutes = int(parts[1]) if len(parts) > 1 and parts[1].isdigit() else 60
             mute_user_func(message, minutes)
@@ -884,6 +890,9 @@ def handle_text(message):
 
         # رفع سکوت
         if text.startswith("رفع"):
+            if not is_admin(message):
+                bot.reply_to(message, "❌ دسترسی نداری")
+            return            
             unmute_user_func(message)
             return
 
@@ -914,6 +923,9 @@ def handle_text(message):
 
         # حذف پیام
         if text == "حذف":
+            if not is_admin(message):
+                bot.reply_to(message, "❌ دسترسی نداری")
+            return
             if message.reply_to_message:
                 try:
                     bot.delete_message(message.chat.id, message.reply_to_message.message_id)
@@ -924,6 +936,9 @@ def handle_text(message):
 
         # پین
         if text == "پین":
+            if not is_admin(message):
+                bot.reply_to(message, "❌ دسترسی نداری")
+            return
             pin_message(message)
             return
 
@@ -949,6 +964,9 @@ def handle_text(message):
 
         # فیلتر کلمه
         if text.startswith("فیلتر "):
+            if not is_admin(message):
+                bot.reply_to(message, "❌ دسترسی نداری")
+            return
             add_banned_word(message)
             return
 
@@ -1001,6 +1019,9 @@ def handle_text(message):
 
         # دستور سفارشی
         if text.startswith("دستور "):
+            if not is_admin(message):
+                bot.reply_to(message, "❌ دسترسی نداری")
+            return
             add_custom_command(message)
             return
 
