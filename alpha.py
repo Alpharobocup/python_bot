@@ -683,7 +683,7 @@ def get_weather(message):
 def show_help(message):
     is_group = message.chat.type in ["group", "supergroup"]
     if is_group:
-        text = """📖 راهنمای ربات (گروه):
+        text = """راهنمای ربات :
 
 🗂 مدیریت:
 • سکو [دقیقه] ← سکوت کاربر (ریپلای)
@@ -734,7 +734,7 @@ def show_help(message):
 ⚡ دستور سفارشی:
 • دستور نام پاسخ ← ساخت دستور"""
     else:
-        text = """📖 راهنمای ربات (پی‌وی):
+        text = """📖 راهنمای ربات :
 
 • تقویم ← تقویم امروز
 • فال ← فال امروز
@@ -742,8 +742,6 @@ def show_help(message):
 • سکه ← پرتاب سکه
 • انتخاب گزینه۱/گزینه۲ ← انتخاب تصادفی
 • حساب عبارت ← ماشین حساب
-• تومان عدد ← تبدیل ارز
-• هوا شهر ← آب و هوا
 • کاربر ← اطلاعات من
 • شمارش عدد ← شمارش معکوس"""
     bot.reply_to(message, text)
@@ -840,10 +838,10 @@ def handle_text(message):
         return
 
     # تبدیل ارز
-    if text.startswith("تومان"):
+    """if text.startswith("تومان"):
         convert_currency(message)
         return
-
+"""
     # آب و هوا
     if text.startswith("هوا"):
         get_weather(message)
