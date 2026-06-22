@@ -3,3 +3,4 @@ flask
 jdatetime
 hijri_converter
 pytz
+requests
