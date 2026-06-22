@@ -657,7 +657,7 @@ def convert_currency(message):
         bot.reply_to(message, "❗ فرمت: تومان عدد_دلار (مثلاً: تومان 100)")
         return
     try:
-        resp = requests.get("https://dapi.p3p.repl.co/api/?currency=usd", timeout=5)
+        resp = requests.get("https://Api.BrsApi.ir/Market/Gold_Currency.php?key=Market_CGCC", timeout=5)
         rate_usd_to_irr = resp.json().get("rates", {}).get("IRR", 500000)
         amount = int(parts[1])
         toman = int(amount * rate_usd_to_irr / 10)
