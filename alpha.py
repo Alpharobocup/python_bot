@@ -1011,6 +1011,21 @@ def handle_text(message):
         if text.lower() in custom_cmds:
             bot.reply_to(message, custom_cmds[text.lower()])
             return
+        # حذف دستور سفارشی
+        if text.startswith("حذف دستور "):
+            parts = text.split(maxsplit=2)
+            if len(parts) < 3:
+                bot.reply_to(message, "❗ فرمت: حذف دستور نام_دستور")
+            else:
+                cmd = parts[2].lower()
+                custom_cmds = data["custom_commands"].get(cid, {})
+                if cmd in custom_cmds:
+                    del data["custom_commands"][cid][cmd]
+                    save_data(data)
+                    bot.reply_to(message, f"✅ دستور «{cmd}» حذف شد!")
+                else:
+                    bot.reply_to(message, f"❌ دستوری با نام «{cmd}» پیدا نشد")
+            return
 
     # حالت تکرار
     if data["repeat_mode"].get(cid):
