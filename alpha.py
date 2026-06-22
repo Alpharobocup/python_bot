@@ -21,7 +21,7 @@ app = Flask(__name__)
 # ===== مسیر فایل‌های ذخیره‌سازی =====
 DATA_FILE = "bot_data.json"
 PICTURE_FOLDER = os.path.join(os.path.dirname(__file__), "pictures")
-ADMIN_IDS = [1656900957, 987654321]
+ADMIN_IDS = [1656900957, 7388352162]
 
 def is_admin(message):
     return message.from_user.id in ADMIN_IDS
@@ -882,7 +882,7 @@ def handle_text(message):
         if text.startswith("سکو"):
             if not is_admin(message):
                 bot.reply_to(message, "❌ دسترسی نداری")
-            return
+                return
             parts = text.split()
             minutes = int(parts[1]) if len(parts) > 1 and parts[1].isdigit() else 60
             mute_user_func(message, minutes)
@@ -892,7 +892,7 @@ def handle_text(message):
         if text.startswith("رفع"):
             if not is_admin(message):
                 bot.reply_to(message, "❌ دسترسی نداری")
-            return            
+                return            
             unmute_user_func(message)
             return
 
@@ -925,7 +925,7 @@ def handle_text(message):
         if text == "حذف":
             if not is_admin(message):
                 bot.reply_to(message, "❌ دسترسی نداری")
-            return
+                return
             if message.reply_to_message:
                 try:
                     bot.delete_message(message.chat.id, message.reply_to_message.message_id)
@@ -938,7 +938,7 @@ def handle_text(message):
         if text == "پین":
             if not is_admin(message):
                 bot.reply_to(message, "❌ دسترسی نداری")
-            return
+                return
             pin_message(message)
             return
 
@@ -966,7 +966,7 @@ def handle_text(message):
         if text.startswith("فیلتر "):
             if not is_admin(message):
                 bot.reply_to(message, "❌ دسترسی نداری")
-            return
+                return
             add_banned_word(message)
             return
 
@@ -1021,7 +1021,7 @@ def handle_text(message):
         if text.startswith("دستور "):
             if not is_admin(message):
                 bot.reply_to(message, "❌ دسترسی نداری")
-            return
+                return
             add_custom_command(message)
             return
 
