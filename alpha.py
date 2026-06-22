@@ -629,7 +629,7 @@ def countdown(message):
     if len(parts) < 2 or not parts[1].isdigit():
         bot.reply_to(message, "❗ فرمت: شمارش عدد (مثلاً: شمارش 5)")
         return
-    n = min(int(parts[1]), 20)
+    n = min(int(parts[1]), 20000000000000000)
     text = "⏳ شمارش معکوس:\n"
     text += " ".join([str(i) for i in range(n, 0, -1)]) + " 🚀"
     bot.reply_to(message, text)
@@ -945,7 +945,7 @@ def handle_text(message):
             return
 
         # لیست یادداشت
-        if text == "یادداشت‌ها" or text == "یادداشتها":
+        if text == "یادداشت‌ ها" or text == "یادداشتها":
             list_notes(message)
             return
 
@@ -975,7 +975,7 @@ def handle_text(message):
             return
 
         # جدول امتیاز
-        if text == "امتیازها":
+        if text == "امتیاز ها":
             show_scores(message)
             return
 
