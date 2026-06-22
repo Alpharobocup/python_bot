@@ -385,7 +385,7 @@ def add_banned_word(message):
 def remove_banned_word(message):
     parts = message.text.strip().split(maxsplit=1)
     if len(parts) < 2:
-        bot.reply_to(message, "❗ فرمت: آنفیلتر کلمه")
+        bot.reply_to(message, "❗ فرمت: آن فیلتر کلمه")
         return
     cid = get_chat_id(message)
     word = parts[1].lower()
@@ -478,7 +478,7 @@ def mute_user_func(message, minutes):
     until = datetime.datetime.now() + datetime.timedelta(minutes=minutes)
     data["mute_users"][user_id] = until.isoformat()
     save_data(data)
-    bot.reply_to(message, f"🔇 کاربر {message.reply_to_message.from_user.first_name} سکوت شد برای {minutes} دقیقه")
+    bot.reply_to(message, f"🔇 کاربر {message.reply_to_message.from_user.first_name} سکوت برای {minutes} دقیقه")
 
 def unmute_user_func(message):
     if not message.reply_to_message:
@@ -528,7 +528,7 @@ def show_scores(message):
     scores = data["scores"].get(cid, {})
     members = data["group_members"].get(cid, {})
     if not scores:
-        bot.reply_to(message, "📊 هنوز امتیازی ثبت نشده")
+        bot.reply_to(message, " هنوز امتیازی ثبت نشده")
         return
     sorted_scores = sorted(scores.items(), key=lambda x: x[1], reverse=True)
     text = "🏆 جدول امتیازات:\n\n"
@@ -657,7 +657,7 @@ def convert_currency(message):
         bot.reply_to(message, "❗ فرمت: تومان عدد_دلار (مثلاً: تومان 100)")
         return
     try:
-        resp = requests.get("https://api.exchangerate-api.com/v4/latest/USD", timeout=5)
+        resp = requests.get("https://dapi.p3p.repl.co/api/?currency=usd", timeout=5)
         rate_usd_to_irr = resp.json().get("rates", {}).get("IRR", 500000)
         amount = int(parts[1])
         toman = int(amount * rate_usd_to_irr / 10)
