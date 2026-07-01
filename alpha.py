@@ -18,6 +18,12 @@ PORT = int(os.environ.get("PORT", 5000))
 bot = telebot.TeleBot(TOKEN)
 app = Flask(__name__)
 
+# اطلاعات خود ربات (برای تشخیص منشن/آیدی ربات در پیام‌ها)
+try:
+    BOT_ME = bot.get_me()
+except Exception:
+    BOT_ME = None
+
 # ===== مسیر فایل‌های ذخیره‌سازی =====
 DATA_FILE = "bot_data.json"
 PICTURE_FOLDER = os.path.join(os.path.dirname(__file__), "pictures")
@@ -70,6 +76,14 @@ TRUTH_LIST = [
     "اگه بدونی فردا دنیا تموم میشه، امشب چیکار می‌کنی؟ 🌍",
 ]
 
+# ===== تنظیمات ماژول یادگیری و حافظه گروه =====
+BOT_TRIGGER_WORDS = ["ربات", "بات"]      # کلماتی که با گفتنشون ربات وارد بحث میشه
+MAX_STORED_MESSAGES = 3000                # حداکثر پیام ذخیره‌شده برای هر گروه (حافظه)
+AUTO_REPLY_CHANCE = 0.04                  # احتمال شرکت خودجوش ربات در بحث (۴٪)
+AUTO_REPLY_COOLDOWN = 90                  # حداقل فاصله زمانی (ثانیه) بین دو مشارکت خودجوش
+MIN_MESSAGES_TO_LEARN = 30                # حداقل پیام لازم تا ربات شروع کنه به جمله‌سازی
+MAX_CHAIN_KEYS = 4000                     # سقف اندازه مدل زبانی هر گروه (برای جلوگیری از رشد بی‌رویه)
+
 # ===== لود و ذخیره داده =====
 def load_data():
     if os.path.exists(DATA_FILE):
@@ -92,6 +106,12 @@ def load_data():
         "custom_commands": {},
         "flood_count": {},
         "antiflood": {},
+        # ---- کلیدهای مربوط به یادگیری و حافظه گروهی ----
+        "chat_messages": {},        # {cid: [ {user_id, name, username, text, date}, ... ]}
+        "learning_enabled": {},     # {cid: True/False}
+        "markov_chain": {},         # {cid: {word: [next_word, next_word, ...]}}
+        "markov_starters": {},      # {cid: [word, word, ...]}
+        "last_auto_reply": {},      # {cid: timestamp}
     }
 
 def save_data(data):
@@ -196,6 +216,227 @@ def save_member(message):
         data["group_members"][cid] = {}
     data["group_members"][cid][uid] = name
     save_data(data)
+
+# ===== یادگیری و حافظه گروهی (Markov Chain) =====
+# این بخش مسئول اینه که: هر پیام گروه رو ذخیره کنه، ازش یه مدل ساده زبانی
+# (زنجیره مارکوف) به‌صورت مستقل برای هر گروه بسازه، و بعداً بتونه با همون
+# سبک گروه جمله بسازه و در بحث‌ها شرکت کنه. همینطور امکان جستجو و یادآوری
+# حرف‌های قبلی افراد رو فراهم می‌کنه.
+
+def is_learning_enabled(cid):
+    # پیش‌فرض یادگیری روشنه مگر اینکه ادمین خاموشش کرده باشه
+    return data["learning_enabled"].get(cid, True)
+
+def remember_message(message):
+    """هر پیام متنی گروه رو در حافظه اون گروه ذخیره می‌کنه (برای یادآوری بعدی)."""
+    if not message.text:
+        return
+    cid = get_chat_id(message)
+    if cid not in data["chat_messages"]:
+        data["chat_messages"][cid] = []
+
+    entry = {
+        "user_id": message.from_user.id,
+        "name": message.from_user.first_name or "کاربر",
+        "username": message.from_user.username or "",
+        "text": message.text,
+        "date": datetime.datetime.now().isoformat(),
+    }
+    data["chat_messages"][cid].append(entry)
+
+    # جلوگیری از رشد بی‌نهایت حافظه هر گروه
+    if len(data["chat_messages"][cid]) > MAX_STORED_MESSAGES:
+        data["chat_messages"][cid] = data["chat_messages"][cid][-MAX_STORED_MESSAGES:]
+
+    save_data(data)
+
+def tokenize(text):
+    """متن رو به کلمات تمیز تبدیل می‌کنه (بدون لینک/منشن/دستور)."""
+    words = []
+    for w in text.strip().split():
+        if w.startswith("http") or w.startswith("@") or w.startswith("/"):
+            continue
+        words.append(w)
+    return words
+
+def train_markov(cid, text):
+    """مدل زبانی گروه رو با یک پیام جدید آپدیت می‌کنه (یادگیری بدون نظارت)."""
+    words = tokenize(text)
+    if len(words) < 2:
+        return
+
+    if cid not in data["markov_chain"]:
+        data["markov_chain"][cid] = {}
+    if cid not in data["markov_starters"]:
+        data["markov_starters"][cid] = []
+
+    chain = data["markov_chain"][cid]
+    starters = data["markov_starters"][cid]
+
+    starters.append(words[0])
+    if len(starters) > 500:
+        data["markov_starters"][cid] = starters[-500:]
+
+    for i in range(len(words) - 1):
+        key = words[i]
+        nxt = words[i + 1]
+        if key not in chain:
+            chain[key] = []
+        chain[key].append(nxt)
+        if len(chain[key]) > 50:
+            chain[key] = chain[key][-50:]
+
+    # سقف اندازه مدل تا حافظه سرور شلوغ نشه
+    if len(chain) > MAX_CHAIN_KEYS:
+        for k in list(chain.keys())[:500]:
+            del chain[k]
+
+    save_data(data)
+
+def generate_sentence(cid, seed_word=None, max_words=20):
+    """با استفاده از مدلی که از گفتگوهای همون گروه یاد گرفته، یک جمله می‌سازه."""
+    chain = data["markov_chain"].get(cid, {})
+    starters = data["markov_starters"].get(cid, [])
+    if not chain or not starters:
+        return None
+
+    current = seed_word if (seed_word and seed_word in chain) else random.choice(starters)
+    result = [current]
+
+    for _ in range(max_words - 1):
+        next_options = chain.get(current)
+        if not next_options:
+            break
+        current = random.choice(next_options)
+        result.append(current)
+
+    return " ".join(result)
+
+def is_bot_mentioned(message):
+    """تشخیص میده که آیا پیام، ربات رو صدا زده (منشن/ریپلای/کلمه محرک)."""
+    text = message.text or ""
+    if BOT_ME and BOT_ME.username and f"@{BOT_ME.username}" in text:
+        return True
+    for w in BOT_TRIGGER_WORDS:
+        if w in text:
+            return True
+    if (
+        message.reply_to_message
+        and message.reply_to_message.from_user
+        and BOT_ME
+        and message.reply_to_message.from_user.id == BOT_ME.id
+    ):
+        return True
+    return False
+
+def handle_bot_participation(message):
+    """تصمیم می‌گیره ربات وارد بحث بشه یا نه، و در صورت لزوم جواب می‌سازه."""
+    cid = get_chat_id(message)
+    if not is_learning_enabled(cid):
+        return
+
+    mentioned = is_bot_mentioned(message)
+
+    now_ts = datetime.datetime.now().timestamp()
+    last_ts = data["last_auto_reply"].get(cid, 0)
+
+    should_random_join = (
+        not mentioned
+        and (now_ts - last_ts) > AUTO_REPLY_COOLDOWN
+        and random.random() < AUTO_REPLY_CHANCE
+    )
+
+    if not (mentioned or should_random_join):
+        return
+
+    total_learned = len(data["chat_messages"].get(cid, []))
+    if total_learned < MIN_MESSAGES_TO_LEARN:
+        if mentioned:
+            bot.reply_to(message, "😅 هنوز دارم یاد می‌گیرم تو این گروه چطور حرف بزنم، یکم بیشتر باهم حرف بزنید تا دستم بیاد!")
+        return
+
+    # سعی می‌کنیم جمله رو با یکی از کلمات پیام فعلی شروع کنیم تا مرتبط‌تر باشه
+    words = tokenize(message.text or "")
+    seed = None
+    chain = data["markov_chain"].get(cid, {})
+    for w in reversed(words):
+        if w in chain:
+            seed = w
+            break
+
+    sentence = generate_sentence(cid, seed_word=seed)
+    if not sentence:
+        return
+
+    data["last_auto_reply"][cid] = now_ts
+    save_data(data)
+
+    if mentioned:
+        bot.reply_to(message, sentence)
+    else:
+        bot.send_message(message.chat.id, sentence)
+
+def recall_user_messages(message):
+    """دستور «چی گفت» → یادآوری حرف‌های قبلی یک کاربر خاص در همون گروه."""
+    cid = get_chat_id(message)
+    raw = message.text.strip()
+    rest = raw[len("چی گفت"):].strip()
+    rest_parts = rest.split(maxsplit=1) if rest else []
+
+    target_name = None
+    keyword = None
+
+    if message.reply_to_message:
+        target_name = message.reply_to_message.from_user.first_name or "کاربر"
+        if rest:
+            keyword = rest
+    elif rest_parts:
+        target_name = rest_parts[0].replace("@", "")
+        if len(rest_parts) > 1:
+            keyword = rest_parts[1]
+    else:
+        bot.reply_to(message, "❗ فرمت: چی گفت @یوزرنیم [کلمه] یا ریپلای رو پیام یه نفر بزن و بنویس «چی گفت»")
+        return
+
+    messages = data["chat_messages"].get(cid, [])
+    matched = [
+        m for m in messages
+        if target_name.lower() in (m.get("name") or "").lower()
+        or target_name.lower() == (m.get("username") or "").lower()
+    ]
+    if keyword:
+        matched = [m for m in matched if keyword.lower() in m["text"].lower()]
+
+    if not matched:
+        bot.reply_to(message, f"❌ چیزی از «{target_name}» تو حافظه‌ام پیدا نکردم")
+        return
+
+    matched = matched[-5:]
+    text_out = f"🗣️ چیزهایی که {target_name} گفته:\n\n"
+    for m in matched:
+        text_out += f"• {m['text']}\n"
+    bot.reply_to(message, text_out)
+
+def search_group_memory(message):
+    """دستور «بگرد» → جستجوی یک کلمه در کل حافظه گفتگوهای گروه."""
+    cid = get_chat_id(message)
+    raw = message.text.strip()
+    keyword = raw[len("بگرد"):].strip()
+    if not keyword:
+        bot.reply_to(message, "❗ فرمت: بگرد کلمه")
+        return
+
+    messages = data["chat_messages"].get(cid, [])
+    matched = [m for m in messages if keyword.lower() in m["text"].lower()]
+    if not matched:
+        bot.reply_to(message, f"❌ چیزی درباره «{keyword}» تو حافظه‌ام پیدا نکردم")
+        return
+
+    matched = matched[-5:]
+    text_out = f"🔎 نتایج جستجو برای «{keyword}»:\n\n"
+    for m in matched:
+        text_out += f"👤 {m['name']}: {m['text']}\n"
+    bot.reply_to(message, text_out)
 
 # ===== نجوا (whisper) =====
 def handle_whisper(message):
@@ -726,6 +967,12 @@ def show_help(message):
 • فال ← فال امروز
 • شمارش عدد ← شمارش معکوس
 
+🧠 یادگیری و حافظه گروه:
+• یادگیری روشن/خاموش ← فعال یا غیرفعال کردن یادگیری خودکار (فقط ادمین)
+• چی گفت @یوزر [کلمه] ← یادآوری حرف‌های یه نفر (یا ریپلای رو پیامش + «چی گفت»)
+• بگرد کلمه ← جستجو تو کل حافظه گفتگوهای گروه
+• صدا زدن ربات (منشن/ریپلای/گفتن «ربات») یا حتی خودجوش ← وارد بحث می‌شه
+
 📊 اطلاعات:
 • تقویم ← تقویم امروز
 • کاربر ← اطلاعات کاربر
@@ -773,9 +1020,10 @@ def handle_text(message):
     cid = get_chat_id(message)
     is_group = message.chat.type in ["group", "supergroup"]
 
-    # ذخیره عضو
+    # ذخیره عضو + ذخیره پیام در حافظه گروه (برای یادآوری بعدی)
     if is_group:
         save_member(message)
+        remember_message(message)
 
     # بررسی سکوت
     if is_muted(user_id):
@@ -1045,6 +1293,43 @@ def handle_text(message):
                 else:
                     bot.reply_to(message, f"❌ دستوری با نام «{cmd}» پیدا نشد")
             return
+
+        # ===== یادگیری روشن/خاموش (فقط ادمین) =====
+        if text == "یادگیری روشن":
+            if not is_admin(message):
+                bot.reply_to(message, "❌ دسترسی نداری")
+                return
+            data["learning_enabled"][cid] = True
+            save_data(data)
+            bot.reply_to(message, "🧠 یادگیری روشن شد! از الان یاد می‌گیرم تو این گروه چطور حرف بزنم.")
+            return
+
+        if text == "یادگیری خاموش":
+            if not is_admin(message):
+                bot.reply_to(message, "❌ دسترسی نداری")
+                return
+            data["learning_enabled"][cid] = False
+            save_data(data)
+            bot.reply_to(message, "🧠 یادگیری خاموش شد.")
+            return
+
+        # ===== یادآوری حرف‌های یه کاربر =====
+        if text.startswith("چی گفت"):
+            recall_user_messages(message)
+            return
+
+        # ===== جستجو در حافظه گروه =====
+        if text.startswith("بگرد"):
+            search_group_memory(message)
+            return
+
+    # ===== یادگیری خودکار از پیام‌های عادی + مشارکت در بحث =====
+    # فقط پیام‌هایی که به هیچ‌کدوم از دستورات بالا نخوردن به این‌جا می‌رسن،
+    # پس مدل زبانی با متن دستورات آلوده نمیشه و فقط از حرف زدن طبیعی افراد یاد می‌گیره.
+    if is_group:
+        if is_learning_enabled(cid):
+            train_markov(cid, text)
+        handle_bot_participation(message)
 
     # حالت تکرار
     if data["repeat_mode"].get(cid):
